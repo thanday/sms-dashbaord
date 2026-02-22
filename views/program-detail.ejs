@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><%= programName %> | Analytics Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .chart-card-content { display: flex; flex-direction: column; justify-content: space-between; }
+    </style>
+</head>
+<body class="bg-[#050810] text-slate-400 min-h-screen p-6 md:p-12">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+            <div>
+                <a href="/dashboard/all" class="text-blue-500 hover:text-blue-400 text-sm font-bold flex items-center gap-2 mb-2 transition-all">
+                    ← Back to Global Dashboard
+                </a>
+                <h1 class="text-5xl font-black text-white tracking-tighter uppercase"><%= programName %></h1>
+                <p class="text-slate-500 mt-2 font-medium italic">Real-time performance analytics</p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center min-w-[220px] shadow-2xl">
+                <span id="grandTotal" class="text-5xl font-black text-white block tracking-tighter">0</span>
+                <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 block">Total Program SMS</span>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] mb-12 backdrop-blur-sm shadow-xl">
+            <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Hourly Engagement Heatmap</h3>
+            <div id="heatmapChart" class="min-h-[380px] w-full"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <div class="lg:col-span-2 bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm flex flex-col chart-card-content">
+                <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Keyword Distribution</h3>
+                <div id="keywordBarChart" class="w-full mt-auto" style="min-height: 420px;"></div>
+            </div>
+
+            <div class="space-y-8">
+                <div class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] flex flex-col items-center justify-center backdrop-blur-sm">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-8 text-center">SMS Share</h3>
+                    <div id="operatorDonut"></div>
+                    <div class="flex gap-8 mt-8 w-full px-4 text-center">
+                        <div class="flex-1">
+                            <p id="count-ooredoo" class="text-3xl font-black text-rose-500">0</p>
+                            <p class="text-[10px] uppercase font-bold text-slate-600">Ooredoo</p>
+                        </div>
+                        <div class="flex-1 border-l border-slate-800">
+                            <p id="count-dhiraagu" class="text-3xl font-black text-[#FC7022]">0</p>
+                            <p class="text-[10px] uppercase font-bold text-slate-600">Dhiraagu</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-[2.5rem] backdrop-blur-sm">
+                    <h3 class="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-4 text-center">Top Participants</h3>
+                    <div id="leaderboardList" class="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/40 border border-slate-800 p-10 rounded-[2.5rem] backdrop-blur-sm">
+            <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-10 text-center uppercase">Daily Traffic Trend</h3>
+            <div id="dailyTrendLineChart"></div>
+        </div>
+
+<% if (programName === "Komme Gadiyaku Inaameh") { %>
+    <div class="mt-12 bg-slate-900/60 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+            <h3 class="text-lg font-black text-white uppercase tracking-tight">Export Numbers For Draw</h3>
+            <p class="text-sm text-slate-500">Downloads 12 individual .txt files filtered by keyword and "SSTV".</p>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <input type="date" id="downloadDate" 
+                   class="bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 transition-all">
+            
+            <button onclick="downloadInaamehZip()" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Download ZIP
+            </button>
+        </div>
+    </div>
+<% } %>
+    </div>
+
+    <script>
+      const programId = "<%= programId %>";
+      const currentProgramName = "<%= programName %>";
+      const socket = io();
+      let heatmapChart, barChart, donutChart, trendChart;
+
+      // Custom sequence for Inaameh program
+      const promoOrder = ['AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'JJ', 'KK', 'LL', 'MM'];
+
+      function downloadInaamehZip() {
+    const dateInput = document.getElementById('downloadDate').value;
+    
+    // Default to current business day if no date selected
+    let targetDate = dateInput;
+    if (!targetDate) {
+        // Simple logic to get current date in YYYY-MM-DD format
+        const now = new Date();
+        // Shift if before 2am to match business logic
+        if (now.getHours() < 2) now.setDate(now.getDate() - 1);
+        targetDate = now.toISOString().split('T')[0];
+    }
+
+    if (currentProgramName !== "Komme Gadiyaku Inaameh") {
+        alert("This download is specifically for the 'Komme Gadiyaku Inaameh' program.");
+        return;
+    }
+
+    window.location.href = `/api/download-inaameh-zip?programId=${programId}&date=${targetDate}`;
+}
+
+// Set default date picker value to today on load
+window.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('downloadDate').value = today;
+});
+
+      async function refreshDetail() {
+        try {
+          const [statRes, trendRes, heatRes, spenderRes] = await Promise.all([
+            fetch(`/api/stats/${programId}`),
+            fetch(`/api/daily-stats/${programId}`),
+            fetch(`/api/heatmap/${programId}`),
+            fetch(`/api/top-spenders/${programId}`),
+          ]);
+
+          const statsRaw = await statRes.json();
+          const trendData = await trendRes.json();
+          const heatmapRaw = await heatRes.json();
+          const topSpenders = await spenderRes.json();
+
+          // Apply manual sorting to stats for Bar Chart and Totals
+          const stats = statsRaw.sort((a, b) => {
+            if (currentProgramName === "Komme Gadiyaku Inaameh") {
+               return promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword);
+            }
+            return 0;
+          });
+
+          // Text Data Updates
+          document.getElementById("grandTotal").innerText = stats.reduce((a, b) => a + parseInt(b.count), 0).toLocaleString();
+          document.getElementById("count-ooredoo").innerText = stats.reduce((a, b) => a + parseInt(b.ooredoo), 0).toLocaleString();
+          document.getElementById("count-dhiraagu").innerText = stats.reduce((a, b) => a + parseInt(b.dhiraagu), 0).toLocaleString();
+
+          // Leaderboard
+          document.getElementById("leaderboardList").innerHTML = topSpenders.map((u, i) => `
+                <div class="flex justify-between items-center bg-black/30 p-3 rounded-2xl border border-slate-800/50">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : "text-amber-600"}">#${i + 1}</span>
+                        <span class="text-sm font-bold text-white tracking-wider">${u.msisdn}</span>
+                    </div>
+                    <div class="text-right"><span class="text-xs font-black text-slate-400">${u.total_messages}</span></div>
+                </div>`).join("");
+
+          const categories = stats.map((s) => (currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time) ? s.active_time : s.keyword);
+
+          // 1. HEATMAP
+          const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+          const heatmapSeries = days.map((d) => ({
+              name: d,
+              data: hours.map((h, hi) => {
+                const f = heatmapRaw.find((r) => r.day === d && parseInt(r.hour) === hi);
+                return { x: h, y: f ? parseInt(f.count) : 0 };
+              }),
+            })).reverse();
+
+          if (heatmapChart) heatmapChart.destroy();
+          heatmapChart = new ApexCharts(document.querySelector("#heatmapChart"), {
+              series: heatmapSeries,
+              chart: { type: "heatmap", height: 380, toolbar: { show: false }, foreColor: "#64748b" },
+              dataLabels: { enabled: false },
+              plotOptions: {
+                heatmap: {
+                  shadeIntensity: 0.5, radius: 4,
+                  colorScale: {
+                    ranges: [
+                      { from: 0, to: 0, color: "#0f172a", name: "None" },
+                      { from: 1, to: 50, color: "#fbbf24", name: "Low" },
+                      { from: 51, to: 200, color: "#f97316", name: "High" },
+                      { from: 201, to: 1000000, color: "#ef4444", name: "Peak" }
+                    ]
+                  }
+                }
+              },
+              xaxis: { type: 'category' }
+          });
+          heatmapChart.render();
+
+          // 2. BAR CHART (Chronological AA-MM)
+          if (barChart) barChart.destroy();
+          barChart = new ApexCharts(document.querySelector("#keywordBarChart"), {
+              series: [
+                { name: "Ooredoo", data: stats.map((s) => parseInt(s.ooredoo)), color: "#f43f5e" },
+                { name: "Dhiraagu", data: stats.map((s) => parseInt(s.dhiraagu)), color: "#FC7022" }
+              ],
+              chart: { type: "bar", height: 420, stacked: true, toolbar: { show: false }, foreColor: "#64748b" },
+              plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+              xaxis: {
+                categories: categories,
+                labels: { rotate: -45, rotateAlways: true, maxHeight: 120, style: { fontSize: "11px", fontWeight: 700 } }
+              },
+              grid: { borderColor: "#1e293b", strokeDashArray: 4, padding: { bottom: 40 } },
+              legend: { position: "top", horizontalAlign: "right", offsetY: -10 }
+          });
+          barChart.render();
+
+          // 3. DONUT
+          if (donutChart) donutChart.destroy();
+          donutChart = new ApexCharts(document.querySelector("#operatorDonut"), {
+              series: [stats.reduce((a, b) => a + parseInt(b.ooredoo), 0), stats.reduce((a, b) => a + parseInt(b.dhiraagu), 0)],
+              chart: { type: "donut", height: 280 },
+              labels: ["Ooredoo", "Dhiraagu"],
+              colors: ["#f43f5e", "#FC7022"],
+              stroke: { show: false },
+              plotOptions: { pie: { donut: { size: "82%", labels: { show: true, total: { show: true, label: "TOTAL", color: "#64748b" }, value: { color: "#fff" } } } } },
+              legend: { show: false }
+          });
+          donutChart.render();
+
+          // 4. TREND LINE (Chronological AA-MM Line Order)
+          const kws = (currentProgramName === "Komme Gadiyaku Inaameh") 
+                        ? promoOrder 
+                        : [...new Set(trendData.map((d) => d.keyword))];
+          
+          const ds = [...new Set(trendData.map((d) => d.day))].sort();
+          
+          const trendSeries = kws.map((kw) => ({
+            name: kw,
+            data: ds.map((day) => {
+              const entry = trendData.find((d) => d.day === day && d.keyword === kw);
+              return entry ? parseInt(entry.count) : 0;
+            }),
+          }));
+
+          if (trendChart) trendChart.destroy();
+          trendChart = new ApexCharts(document.querySelector("#dailyTrendLineChart"), {
+              series: trendSeries,
+              chart: { type: "line", height: 400, toolbar: { show: false }, foreColor: "#64748b" },
+              colors: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#10b981", "#6366f1", "#d946ef", "#f97316", "#14b8a6"],
+              stroke: { curve: "smooth", width: 3 },
+              xaxis: { categories: ds },
+              grid: { borderColor: "#1e293b" },
+              legend: { position: 'top', horizontalAlign: 'center' }
+          });
+          trendChart.render();
+
+        } catch (err) { console.error(err); }
+      }
+
+      socket.on("dataUpdated", refreshDetail);
+      window.onload = refreshDetail;
+    </script>
+</body>
+</html>

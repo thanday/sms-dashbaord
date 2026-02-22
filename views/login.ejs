@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSTV | Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#050810] text-slate-400 min-h-screen flex items-center justify-center font-['Plus_Jakarta_Sans'] p-6">
+
+    <div class="w-full max-w-md">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-black text-white tracking-tighter uppercase italic">SSTV<span class="text-blue-500">ENGINE</span></h1>
+            <p class="text-slate-500 text-sm font-bold mt-2 uppercase tracking-widest">Management Portal</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-10 rounded-[2.5rem] shadow-2xl backdrop-blur-sm">
+            <% if (error) { %>
+                <div class="bg-rose-500/10 border border-rose-500/40 text-rose-500 text-xs font-bold p-4 rounded-2xl mb-6 text-center">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST" class="space-y-6">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Admin Username</label>
+                    <input type="text" name="username" required 
+                           class="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Password</label>
+                    <input type="password" name="password" required 
+                           class="w-full bg-black/40 border border-slate-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-all">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl transition-all shadow-lg shadow-blue-900/20 uppercase tracking-widest text-sm mt-4">
+                    Authenticate
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center mt-8">
+            <a href="/" class="text-slate-600 hover:text-slate-400 text-xs font-bold uppercase tracking-widest transition-all">
+                ← Back to Dashboard
+            </a>
+        </p>
+    </div>
+
+</body>
+</html>

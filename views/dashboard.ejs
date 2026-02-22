@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SMS Analytics Central</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+</head>
+<body class="bg-[#050810] text-slate-400 min-h-screen">
+    
+    <nav class="border-b border-slate-800 bg-[#050810]/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-extrabold text-white tracking-tighter">SMS<span class="text-blue-500">ENGINE</span></h1>
+            <div class="flex gap-4">
+                <input type="date" id="startDate" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-sm outline-none text-blue-400">
+                <input type="date" id="endDate" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-sm outline-none text-blue-400">
+                <button onclick="loadDashboard()" class="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-bold">Filter</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-10">
+    
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 bg-blue-600 p-8 rounded-[2rem] shadow-xl shadow-blue-900/20 flex flex-col justify-center">
+                <h3 class="text-xs font-black text-blue-100 uppercase tracking-widest mb-2">Global Total SMS</h3>
+                <span id="globalGrandTotal" class="text-6xl font-black text-white tracking-tighter">0</span>
+                <p class="text-blue-200 text-[10px] mt-4 font-bold uppercase tracking-widest">Combined Traffic</p>
+            </div>
+    
+            <div class="lg:col-span-1 bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] flex flex-col items-center justify-center">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Operator Share</h3>
+                <div id="globalOperatorDonut"></div>
+            </div>
+    
+            <section class="lg:col-span-2 bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem]">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">Program Performance</h2>
+                </div>
+                <div id="comparisonBarChart"></div>
+            </section>
+        </div>
+    
+        <section class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem]">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-white">Global Traffic Trend</h2>
+                <p class="text-xs text-slate-500">Total SMS received daily across all active programs</p>
+            </div>
+            <div id="globalTrendChart"></div>
+        </section>
+    
+        <div>
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-2xl font-bold text-white tracking-tight">Active Programs</h2>
+                <span class="text-slate-500 text-sm font-bold uppercase tracking-widest" id="progCount">0 Programs</span>
+            </div>
+            <div id="programGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </main>
+
+    <script>
+        const socket = io();
+        let comparisonChart, trendChart, globalDonutChart;
+    
+        async function loadDashboard() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            const dateParams = (start && end) ? `?startDate=${start}&endDate=${end}` : '';
+    
+            // 1. Load Global Trend
+            const globalRes = await fetch(`/api/global-daily-stats${dateParams}`);
+            const globalData = await globalRes.json();
+            renderGlobalTrend(globalData);
+    
+            // 2. Load Program Comparison (New API)
+            const compRes = await fetch(`/api/programs-comparison${dateParams}`);
+            const compData = await compRes.json();
+            
+            // Calculate Global Totals for the Top Row
+            const totalSum = compData.reduce((acc, curr) => acc + parseInt(curr.total), 0);
+            const totalOoredoo = compData.reduce((acc, curr) => acc + parseInt(curr.ooredoo), 0);
+            const totalDhiraagu = compData.reduce((acc, curr) => acc + parseInt(curr.dhiraagu), 0);
+    
+            // Update UI Components
+            document.getElementById('globalGrandTotal').innerText = totalSum.toLocaleString();
+            renderComparisonChart(compData);
+            renderGlobalDonut(totalOoredoo, totalDhiraagu);
+    
+            // 3. Render Individual Program Cards
+            document.getElementById('progCount').innerText = `${compData.length} Programs`;
+            const grid = document.getElementById('programGrid');
+            grid.innerHTML = '';
+    
+            compData.forEach(prog => {
+                const total = parseInt(prog.total);
+                const ooredoo = parseInt(prog.ooredoo);
+                const dhiraagu = parseInt(prog.dhiraagu);
+    
+                const card = document.createElement('div');
+                card.className = "bg-slate-900/60 border border-slate-800 p-6 rounded-3xl hover:border-blue-500/50 transition-all group";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-bold text-white text-lg group-hover:text-blue-400 transition-colors">${prog.name}</h3>
+                        <span class="text-2xl font-black text-white">${total.toLocaleString()}</span>
+                    </div>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                            <span class="text-rose-500">Ooredoo (${ooredoo.toLocaleString()})</span>
+                            <span class="text-orange-500">Dhiraagu (${dhiraagu.toLocaleString()})</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-800 rounded-full flex overflow-hidden">
+                            <div style="width: ${total > 0 ? (ooredoo/total)*100 : 0}%" class="bg-rose-500 h-full"></div>
+                            <div style="width: ${total > 0 ? (dhiraagu/total)*100 : 0}%" class="bg-orange-500 h-full"></div>
+                        </div>
+                    </div>
+                    <a href="/dashboard/program/${prog.id || ''}" class="block text-center bg-slate-800 hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mt-4">
+                        Detailed Analytics →
+                    </a>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    
+        function renderGlobalDonut(ooredoo, dhiraagu) {
+            const options = {
+                series: [ooredoo, dhiraagu],
+                chart: { type: 'donut', height: 220 },
+                labels: ["Ooredoo", "Dhiraagu"],
+                colors: ["#f43f5e", "#FC7022"], // Operator Specific Colors
+                stroke: { show: false },
+                dataLabels: { enabled: false },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '78%',
+                            labels: {
+                                show: true,
+                                name: { show: false },
+                                total: {
+                                    show: true,
+                                    label: 'SHARE',
+                                    color: '#64748b',
+                                    fontSize: '10px',
+                                    fontWeight: 'bold'
+                                },
+                                value: {
+                                    color: '#fff',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    formatter: (val) => {
+                                        const total = ooredoo + dhiraagu;
+                                        return total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                legend: { show: false }
+            };
+    
+            const dom = document.querySelector("#globalOperatorDonut");
+            dom.innerHTML = '';
+            globalDonutChart = new ApexCharts(dom, options);
+            globalDonutChart.render();
+        }
+    
+        function renderComparisonChart(data) {
+            const options = {
+                series: [
+                    { name: 'Ooredoo', data: data.map(d => parseInt(d.ooredoo)), color: '#f43f5e' },
+                    { name: 'Dhiraagu', data: data.map(d => parseInt(d.dhiraagu)), color: '#FC7022' }
+                ],
+                chart: { type: 'bar', height: 260, stacked: true, toolbar: { show: false }, foreColor: '#64748b' },
+                plotOptions: { bar: { horizontal: false, columnWidth: '35%', borderRadius: 4 } },
+                xaxis: { categories: data.map(d => d.name), axisBorder: { show: false } },
+                grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+                legend: { position: 'top', horizontalAlign: 'right' },
+                dataLabels: { enabled: false }
+            };
+            
+            const dom = document.querySelector("#comparisonBarChart");
+            dom.innerHTML = '';
+            comparisonChart = new ApexCharts(dom, options);
+            comparisonChart.render();
+        }
+    
+        function renderGlobalTrend(data) {
+            const options = {
+                series: [{ name: 'Total SMS', data: data.map(d => d.count) }],
+                chart: { type: 'area', height: 250, toolbar: { show: false }, foreColor: '#64748b' },
+                colors: ['#3b82f6'],
+                stroke: { curve: 'smooth', width: 3 },
+                xaxis: { categories: data.map(d => d.day) },
+                grid: { borderColor: '#1e293b' },
+                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0 } }
+            };
+            
+            const dom = document.querySelector("#globalTrendChart");
+            dom.innerHTML = '';
+            trendChart = new ApexCharts(dom, options);
+            trendChart.render();
+        }
+    
+        socket.on('dataUpdated', loadDashboard);
+        window.onload = loadDashboard;
+    </script>
+</body>
+</html>
