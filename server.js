@@ -41,7 +41,7 @@ const pool = new Pool({
     user: 'engineering',
     host: 'localhost',
     database: 'sms_stats',
-    password: String('Sun.Media@94.6'), // Explicitly cast to string
+    password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js
     port: 5432,
 });
 
