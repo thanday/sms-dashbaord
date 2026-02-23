@@ -38,7 +38,7 @@ const isAdmin = (req, res, next) => {
 };
 
 const pool = new Pool({
-    user: 'engineering',
+    user: 'postgres',
     host: 'localhost',
     database: 'sms_stats',
     password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js

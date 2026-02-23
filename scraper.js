@@ -10,7 +10,7 @@ const socket = clientIo("http://localhost:3007");
 const targetOperator = process.argv[2]; 
 
 const pool = new Pool({
-    user: 'engineering',
+    user: 'postgres',
     host: 'localhost',
     database: 'sms_stats',
     password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js
