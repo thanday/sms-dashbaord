@@ -203,16 +203,19 @@ app.get("/api/download-inaameh-zip", async (req, res) => {
       );
 
       const filteredNumbers = logsResult.rows
-        .filter((row) => {
-          const msg = (row.message_content || "").trim().toUpperCase();
-          const cleanKw = kw.name.toUpperCase().trim();
-          const pattern = new RegExp(`^${cleanKw}(\\s*SSTV)?$`);
-          return pattern.test(msg);
-        })
-        .map((row) => row.msisdn);
+    .filter(row => {
+        const msg = (row.message_content || "").toString().trim().toUpperCase();
+        const cleanKw = kw.name.toUpperCase().trim();
 
-      const uniqueNumbers = [...new Set(filteredNumbers)];
-      archive.append(filteredNumbers.join("\r\n"), { name: `${kw.name}.txt` });
+        const matchesKeyword = msg === cleanKw || msg.startsWith(`${cleanKw} SSTV`) || msg.startsWith(`${cleanKw}SSTV`);
+        
+        const isOnlySSTV = msg === "SSTV";
+
+        return matchesKeyword || isOnlySSTV;
+    })
+    .map(row => row.msisdn);
+
+archive.append(filteredNumbers.join('\r\n'), { name: `${kw.name}.txt` });
     }
 
     archive.finalize();
