@@ -38,10 +38,10 @@ const isAdmin = (req, res, next) => {
 };
 
 const pool = new Pool({
-    user: 'postgres',
+    user: 'engineering',
     host: 'localhost',
     database: 'sms_stats',
-    password: 'Sun.Media@94.6', 
+    password: String('Sun.Media@94.6'), // Explicitly cast to string
     port: 5432,
 });
 
