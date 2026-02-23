@@ -203,19 +203,26 @@ app.get("/api/download-inaameh-zip", async (req, res) => {
       );
 
       const filteredNumbers = logsResult.rows
-    .filter(row => {
-        const msg = (row.message_content || "").toString().trim().toUpperCase();
-        const cleanKw = kw.name.toUpperCase().trim();
+        .filter((row) => {
+          const msg = (row.message_content || "")
+            .toString()
+            .trim()
+            .toUpperCase();
+          const cleanKw = kw.name.toUpperCase().trim();
 
-        const matchesKeyword = msg === cleanKw || msg.startsWith(`${cleanKw} SSTV`) || msg.startsWith(`${cleanKw}SSTV`);
-        
-        const isOnlySSTV = msg === "SSTV";
+          // Check for "AA", "AA SSTV", or just "SSTV" (covers lowercase/uppercase)
+          const matchesKeyword = msg === cleanKw;
+          const matchesKeywordWithSSTV =
+            msg.startsWith(`${cleanKw} SSTV`) ||
+            msg.startsWith(`${cleanKw}SSTV`);
+          const isSSTV = msg === "SSTV";
 
-        return matchesKeyword || isOnlySSTV;
-    })
-    .map(row => row.msisdn);
+          // Return true if any of these match
+          return matchesKeyword || matchesKeywordWithSSTV || isSSTV;
+        })
+        .map((row) => row.msisdn);
 
-archive.append(filteredNumbers.join('\r\n'), { name: `${kw.name}.txt` });
+      archive.append(filteredNumbers.join("\r\n"), { name: `${kw.name}.txt` });
     }
 
     archive.finalize();
