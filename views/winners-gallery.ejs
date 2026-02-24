@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Winners Log | SSTV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; background: #050810; }</style>
+</head>
+<body class="text-slate-400 p-8 md:p-12">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-5xl font-black text-white tracking-tighter uppercase">Winners</h1>
+                <p class="text-slate-500 font-medium italic">Draw history by day</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="/api/export-winners" class="bg-green-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-green-900/20">Download CSV</a>
+                <a href="/dashboard/program/1/draw" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Back to Draw Room</a>
+            </div>
+        </div>
+
+        <% 
+            const grouped = winners.reduce((acc, w) => {
+                const label = `DAY ${w.day_number}`;
+                if (!acc[label]) acc[label] = [];
+                acc[label].push(w);
+                return acc;
+            }, {});
+            const sortedDays = Object.keys(grouped).sort((a,b) => parseInt(b.split(' ')[1]) - parseInt(a.split(' ')[1]));
+        %>
+
+        <% sortedDays.forEach((day, index) => { 
+            // Get the date from the first winner in this group to show in the header
+            const drawDate = new Date(grouped[day][0].draw_date).toLocaleDateString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            });
+        %>
+            <div class="mb-4 bg-slate-900/40 border border-slate-800 rounded-[2rem] overflow-hidden">
+                <button onclick="toggleDay('<%= index %>')" class="w-full flex justify-between items-center p-6 hover:bg-slate-800/30 transition-all">
+                    <div class="flex items-center gap-6">
+                        <div class="flex flex-col items-start">
+                            <span class="text-blue-500 font-black text-lg tracking-widest"><%= day %></span>
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest"><%= drawDate %></span>
+                        </div>
+                        <span class="h-8 w-px bg-slate-800 hidden md:block"></span>
+                        <span class="text-slate-600 text-[10px] font-bold uppercase tracking-widest"><%= grouped[day].length %> Winners Recorded</span>
+                    </div>
+                    <span id="icon-<%= index %>" class="text-slate-500"><%= index === 0 ? '▲' : '▼' %></span>
+                </button>
+
+                <div id="content-<%= index %>" class="<%= index === 0 ? '' : 'hidden' %> p-6 pt-0 border-t border-slate-800/50">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                        <% grouped[day].sort((a,b) => a.keyword.localeCompare(b.keyword)).forEach(winner => { %>
+                            <div class="bg-black/40 border border-slate-800 p-5 rounded-2xl">
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-blue-500 text-[9px] font-black uppercase">Slot <%= winner.keyword %></span>
+                                    <span class="text-[9px] text-slate-600 font-bold"><%= new Date(winner.won_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></span>
+                                </div>
+                                <p class="text-xl font-black text-white tracking-widest"><%= winner.msisdn %></p>
+                            </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <script>
+        function toggleDay(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            content.classList.toggle('hidden');
+            icon.innerText = content.classList.contains('hidden') ? '▼' : '▲';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SSTV Live Draw | <%= programName %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&family=JetBrains+Mono:wght@800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: #000205;
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Expanded Cyber Plate to fill space and prevent overlap */
+      .cyber-plate {
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(10px);
+        border: 2px solid #1e293b;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        padding: 2rem 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Large Slot Labels for high visibility */
+      .slot-label {
+        font-size: 1.5rem;
+        letter-spacing: 0.6em;
+        color: #64748b;
+        font-weight: 900;
+        z-index: 20;
+      }
+
+      /* Large numbers centered with vertical breathing room */
+      .rolling-number {
+        font-family: "JetBrains Mono", monospace;
+        color: #fff;
+        text-shadow: 0 0 25px rgba(59, 130, 246, 0.9);
+        font-size: 5.8vw;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        margin: 1.5rem 0;
+        z-index: 10;
+      }
+
+      /* Success state for winners */
+      .is-winner {
+        border-color: #22c55e !important;
+        background: rgba(20, 83, 45, 0.4) !important;
+        box-shadow: 0 0 60px rgba(34, 197, 94, 0.4) !important;
+      }
+
+      .status-text {
+        font-size: 11px;
+        color: #475569;
+        letter-spacing: 0.1em;
+        z-index: 20;
+      }
+
+      .plate-glow {
+        position: absolute;
+        width: 150%;
+        height: 150%;
+        background: radial-gradient(
+          circle,
+          rgba(59, 130, 246, 0.1) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body class="p-4">
+    <div
+      class="flex justify-between items-center mb-4 bg-slate-900/50 p-4 rounded-3xl border border-slate-800 backdrop-blur-md"
+    >
+      <div>
+        <h1 class="text-2xl font-black text-white uppercase tracking-tighter">
+          <%= programName %>
+        </h1>
+        <div class="flex items-center gap-4 mt-1">
+          <p
+            id="dayTag"
+            class="text-blue-500 font-bold text-[10px] uppercase tracking-widest"
+          ></p>
+          <span class="text-slate-700">|</span>
+          <p
+            class="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+          >
+            System Last Sync:
+            <span id="lastSyncTime" class="text-white">Loading...</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <a
+          href="/dashboard/winners"
+          class="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+        >
+          Winners Gallery
+        </a>
+        <input
+          type="date"
+          id="drawDate"
+          onchange="loadAllData()"
+          class="bg-black border border-slate-700 rounded-xl px-3 py-2 text-white text-xs outline-none focus:border-blue-500"
+        />
+
+        <button
+          onclick="toggleDraw()"
+          id="mainBtn"
+          class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-xl font-black uppercase text-xs transition-all shadow-lg"
+        >
+          Start All Draws
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="rollerGrid"
+      class="flex-grow grid grid-cols-2 md:grid-cols-4 gap-4 mb-2 min-h-0"
+    ></div>
+
+    <script>
+      const promoOrder = [
+        "AA",
+        "BB",
+        "CC",
+        "DD",
+        "EE",
+        "FF",
+        "GG",
+        "HH",
+        "JJ",
+        "KK",
+        "LL",
+        "MM",
+      ];
+      const programId = "<%= programId %>";
+      let isRolling = false;
+      let intervals = {};
+      let dataStore = {};
+
+      window.onload = () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        document.getElementById("drawDate").value = yesterday
+          .toISOString()
+          .split("T")[0];
+        initGrid();
+        loadAllData();
+      };
+
+      function initGrid() {
+        const grid = document.getElementById("rollerGrid");
+        promoOrder.forEach((kw) => {
+          grid.innerHTML += `
+                    <div id="card-${kw}" class="cyber-plate rounded-[2.5rem] text-center relative">
+                        <div class="plate-glow"></div>
+                        <div class="slot-label font-black uppercase relative">${kw}</div>
+                        <div id="display-${kw}" class="rolling-number font-black relative">0000000</div>
+                        <div id="status-${kw}" class="status-text font-bold uppercase relative">Ready</div>
+                    </div>`;
+        });
+      }
+
+      async function loadAllData() {
+        const selectedDate = document.getElementById("drawDate").value;
+        const start = new Date("2026-02-18");
+        const diff =
+          Math.floor((new Date(selectedDate) - start) / 86400000) + 1;
+        document.getElementById(
+          "dayTag"
+        ).innerText = `BROADCAST DAY ${diff} | DATA: ${selectedDate}`;
+
+        // 1. Fetch Last Sync Time
+        try {
+          const syncRes = await fetch("/api/last-sync");
+          const syncData = await syncRes.json();
+          if (syncData.last_sync) {
+            const date = new Date(syncData.last_sync);
+            document.getElementById("lastSyncTime").innerText =
+              date.toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+          }
+        } catch (e) {
+          console.error("Sync fetch failed");
+        }
+
+        // 2. Fetch Roller Numbers for each slot
+        for (const kw of promoOrder) {
+          document.getElementById(`status-${kw}`).innerText = "SYNCING...";
+          const res = await fetch(
+            `/api/draw-numbers/${programId}?date=${selectedDate}&keyword=${kw}`
+          );
+          const data = await res.json();
+          dataStore[kw] = data.numbers.length > 0 ? data.numbers : ["NO DATA"];
+          document.getElementById(
+            `status-${kw}`
+          ).innerText = `${dataStore[kw].length} RECORDS LOADED`;
+        }
+      }
+
+      async function toggleDraw() {
+        const selectedDate = document.getElementById("drawDate").value;
+        const btn = document.getElementById("mainBtn");
+
+        if (!isRolling) {
+          // Double Draw Safety Check
+          const check = await fetch(
+            `/api/check-draw/${programId}?date=${selectedDate}`
+          );
+          const { exists } = await check.json();
+
+          if (exists) {
+            const confirmRedraw = confirm(
+              `⚠️ DRAW ALREADY TAKEN for ${selectedDate}.\n\nDo you want to REPLACE the existing winners?`
+            );
+            if (!confirmRedraw) return;
+            await fetch(`/api/clear-draw/${programId}?date=${selectedDate}`, {
+              method: "DELETE",
+            });
+          }
+
+          isRolling = true;
+          btn.innerText = "Stop & Save Winners";
+          btn.classList.replace("bg-blue-600", "bg-red-600");
+
+          promoOrder.forEach((kw) => {
+            document.getElementById(`card-${kw}`).classList.remove("is-winner");
+            intervals[kw] = setInterval(() => {
+              const list = dataStore[kw];
+              document.getElementById(`display-${kw}`).innerText =
+                list[Math.floor(Math.random() * list.length)];
+            }, 60);
+          });
+        } else {
+          isRolling = false;
+          btn.innerText = "Start All Draws";
+          btn.classList.replace("bg-red-600", "bg-blue-600");
+
+          promoOrder.forEach((kw) => {
+            clearInterval(intervals[kw]);
+            const finalNum = document.getElementById(`display-${kw}`).innerText;
+            if (finalNum !== "NO DATA") {
+              document.getElementById(`card-${kw}`).classList.add("is-winner");
+              saveWinner(finalNum, kw);
+            }
+          });
+        }
+      }
+
+      async function saveWinner(msisdn, keyword) {
+        const date = document.getElementById("drawDate").value;
+        await fetch("/api/save-winner", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ msisdn, keyword, programId, date }),
+        });
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          e.preventDefault();
+          toggleDraw();
+        }
+      });
+    </script>
+  </body>
+</html>
