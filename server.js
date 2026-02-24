@@ -197,8 +197,8 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
   }
 });
 
-// Route to export winners as CSV
-app.get("/api/export-daily-winners", isAdmin, async (req, res) => {
+// Route to export winners as CSV 
+app.get("/api/export-daily-winners", async (req, res) => {
   const { day } = req.query; 
   
   try {
