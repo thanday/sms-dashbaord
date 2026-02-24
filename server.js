@@ -205,7 +205,7 @@ app.get("/api/export-daily-winners", async (req, res) => {
     const result = await pool.query(`
       SELECT 
         w.day_number as "Day", 
-        w.draw_date as "Date", 
+        TO_CHAR(w.draw_date, 'YYYY-MM-DD') as "FormattedDate", 
         k.active_time as "Active Time",
         w.keyword as "Slot", 
         w.msisdn as "Winner Phone"
@@ -224,8 +224,9 @@ app.get("/api/export-daily-winners", async (req, res) => {
     if (rows.length === 0) return res.status(404).send("No winners found for this day.");
 
     const headers = "Day,Date,Active Time,Slot,Winner Phone\n";
+    
     const csvData = rows.map(row => 
-      `${row.Day},"${row.Date.toISOString().split('T')[0]}","${row["Active Time"]}",${row.Slot},${row["Winner Phone"]}`
+      `${row.Day},${row.FormattedDate},"${row["Active Time"]}",${row.Slot},${row["Winner Phone"]}`
     ).join("\n");
 
     res.setHeader("Content-Type", "text/csv");
