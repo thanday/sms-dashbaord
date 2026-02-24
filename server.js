@@ -198,41 +198,38 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
 });
 
 // Route to export winners as CSV
-app.get("/api/export-winners", isAdmin, async (req, res) => {
+app.get("/api/export-daily-winners", isAdmin, async (req, res) => {
+  const { day } = req.query; 
+  
   try {
     const result = await pool.query(`
-          SELECT w.day_number as "Day", w.draw_date as "Date", 
-                 w.keyword as "Slot", w.msisdn as "Phone Number",
-                 p.name as "Program"
-          FROM draw_winners w
-          JOIN programs p ON w.program_id = p.id
-          ORDER BY w.draw_date DESC, w.day_number DESC
-      `);
+      SELECT 
+        w.day_number as "Day", 
+        w.draw_date as "Date", 
+        k.active_time as "Active Time",
+        w.keyword as "Slot", 
+        w.msisdn as "Winner Phone"
+      FROM draw_winners w
+      JOIN keywords k ON w.keyword = k.name AND w.program_id = k.program_id
+      WHERE w.day_number = $1 AND w.program_id = 1
+      ORDER BY 
+        CASE w.keyword 
+          WHEN 'AA' THEN 1 WHEN 'BB' THEN 2 WHEN 'CC' THEN 3 WHEN 'DD' THEN 4
+          WHEN 'EE' THEN 5 WHEN 'FF' THEN 6 WHEN 'GG' THEN 7 WHEN 'HH' THEN 8
+          WHEN 'JJ' THEN 9 WHEN 'KK' THEN 10 WHEN 'LL' THEN 11 WHEN 'MM' THEN 12
+        END ASC;
+    `, [day]);
 
     const rows = result.rows;
-    if (rows.length === 0) return res.status(404).send("No winners to export.");
+    if (rows.length === 0) return res.status(404).send("No winners found for this day.");
 
-    // Define CSV Headers
-    const headers = Object.keys(rows[0]).join(",") + "\n";
+    const headers = "Day,Date,Active Time,Slot,Winner Phone\n";
+    const csvData = rows.map(row => 
+      `${row.Day},"${row.Date.toISOString().split('T')[0]}","${row["Active Time"]}",${row.Slot},${row["Winner Phone"]}`
+    ).join("\n");
 
-    // Map data to CSV rows
-    const csvData = rows
-      .map((row) =>
-        Object.values(row)
-          .map((val) => `"${val}"`)
-          .join(",")
-      )
-      .join("\n");
-
-    // Set Headers to force browser download
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=SSTV_Winners_${
-        new Date().toISOString().split("T")[0]
-      }.csv`
-    );
-
+    res.setHeader("Content-Disposition", `attachment; filename=Day_${day}_Winners.csv`);
     res.status(200).send(headers + csvData);
   } catch (err) {
     res.status(500).send("Export failed: " + err.message);
