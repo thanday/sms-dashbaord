@@ -138,144 +138,154 @@
       });
 
       async function refreshDetail() {
-        try {
-          // Added /api/last-sync to the fetch list
-          const [statRes, trendRes, heatRes, spenderRes, syncRes] = await Promise.all([
+    try {
+        const [statRes, trendRes, heatRes, spenderRes, syncRes] = await Promise.all([
             fetch(`/api/stats/${programId}`),
             fetch(`/api/daily-stats/${programId}`),
             fetch(`/api/heatmap/${programId}`),
             fetch(`/api/top-spenders/${programId}`),
             fetch(`/api/last-sync`)
-          ]);
+        ]);
 
-          const statsRaw = await statRes.json();
-          const trendData = await trendRes.json();
-          const heatmapRaw = await heatRes.json();
-          const topSpenders = await spenderRes.json();
-          const syncData = await syncRes.json(); // Parse sync data
+        const statsRaw = await statRes.json();
+        const trendData = await trendRes.json();
+        const heatmapRaw = await heatRes.json();
+        const topSpenders = await spenderRes.json();
+        const syncData = await syncRes.json();
 
-          // Update Last Sync UI
-          if (syncData && syncData.last_sync) {
-              const date = new Date(syncData.last_sync);
-              document.getElementById("lastSyncTime").innerText = date.toLocaleString('en-GB', {
-                  day: '2-digit', month: 'short', year: 'numeric',
-                  hour: '2-digit', minute: '2-digit', second: '2-digit'
-              });
-          }
+        // Update Last Sync UI (with safety check for other programs)
+        const syncElement = document.getElementById("lastSyncTime");
+        if (syncElement && syncData && syncData.last_sync) {
+            const date = new Date(syncData.last_sync);
+            syncElement.innerText = date.toLocaleString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        }
 
-          const stats = statsRaw.sort((a, b) => {
-            if (currentProgramName === "Komme Gadiyaku Inaameh") {
-               return promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword);
-            }
-            return 0;
-          });
+        // IMPROVED SORTING LOGIC
+        let stats;
+        if (currentProgramName === "Komme Gadiyaku Inaameh") {
+            stats = statsRaw.sort((a, b) => promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword));
+        } else {
+            // Sort by message count (descending) for all other programs like Qibla Quiz
+            stats = statsRaw.sort((a, b) => parseInt(b.count) - parseInt(a.count));
+        }
 
-          document.getElementById("grandTotal").innerText = stats.reduce((a, b) => a + parseInt(b.count), 0).toLocaleString();
-          document.getElementById("count-ooredoo").innerText = stats.reduce((a, b) => a + parseInt(b.ooredoo), 0).toLocaleString();
-          document.getElementById("count-dhiraagu").innerText = stats.reduce((a, b) => a + parseInt(b.dhiraagu), 0).toLocaleString();
+        // If no data, exit early to prevent chart crashes
+        if (!stats || stats.length === 0) return;
 
-          document.getElementById("leaderboardList").innerHTML = topSpenders.map((u, i) => `
-                <div class="flex justify-between items-center bg-black/30 p-3 rounded-2xl border border-slate-800/50">
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : "text-amber-600"}">#${i + 1}</span>
-                        <span class="text-sm font-bold text-white tracking-wider">${u.msisdn}</span>
-                    </div>
-                    <div class="text-right"><span class="text-xs font-black text-slate-400">${u.total_messages}</span></div>
-                </div>`).join("");
+        // Update Totals
+        document.getElementById("grandTotal").innerText = stats.reduce((a, b) => a + parseInt(b.count || 0), 0).toLocaleString();
+        document.getElementById("count-ooredoo").innerText = stats.reduce((a, b) => a + parseInt(b.ooredoo || 0), 0).toLocaleString();
+        document.getElementById("count-dhiraagu").innerText = stats.reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0).toLocaleString();
 
-          const categories = stats.map((s) => (currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time) ? s.active_time : s.keyword);
+        // Leaderboard Update
+        document.getElementById("leaderboardList").innerHTML = topSpenders.map((u, i) => `
+            <div class="flex justify-between items-center bg-black/30 p-3 rounded-2xl border border-slate-800/50">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : "text-amber-600"}">#${i + 1}</span>
+                    <span class="text-sm font-bold text-white tracking-wider">${u.msisdn}</span>
+                </div>
+                <div class="text-right"><span class="text-xs font-black text-slate-400">${u.total_messages}</span></div>
+            </div>`).join("");
 
-          // 1. HEATMAP
-          const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-          const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
-          const heatmapSeries = days.map((d) => ({
-              name: d,
-              data: hours.map((h, hi) => {
+        // Handle categories: Use active_time if available, otherwise fallback to keyword
+        const categories = stats.map((s) => (currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time) ? s.active_time : s.keyword);
+
+        // 1. HEATMAP
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+        const heatmapSeries = days.map((d) => ({
+            name: d,
+            data: hours.map((h, hi) => {
                 const f = heatmapRaw.find((r) => r.day === d && parseInt(r.hour) === hi);
                 return { x: h, y: f ? parseInt(f.count) : 0 };
-              }),
-            })).reverse();
+            }),
+        })).reverse();
 
-          if (heatmapChart) heatmapChart.destroy();
-          heatmapChart = new ApexCharts(document.querySelector("#heatmapChart"), {
-              series: heatmapSeries,
-              chart: { type: "heatmap", height: 380, toolbar: { show: false }, foreColor: "#64748b" },
-              dataLabels: { enabled: false },
-              plotOptions: {
+        if (heatmapChart) heatmapChart.destroy();
+        heatmapChart = new ApexCharts(document.querySelector("#heatmapChart"), {
+            series: heatmapSeries,
+            chart: { type: "heatmap", height: 380, toolbar: { show: false }, foreColor: "#64748b" },
+            dataLabels: { enabled: false },
+            plotOptions: {
                 heatmap: {
-                  shadeIntensity: 0.5, radius: 4,
-                  colorScale: {
-                    ranges: [
-                      { from: 0, to: 0, color: "#0f172a", name: "None" },
-                      { from: 1, to: 50, color: "#fbbf24", name: "Low" },
-                      { from: 51, to: 200, color: "#f97316", name: "High" },
-                      { from: 201, to: 1000000, color: "#ef4444", name: "Peak" }
-                    ]
-                  }
+                    shadeIntensity: 0.5, radius: 4,
+                    colorScale: {
+                        ranges: [
+                            { from: 0, to: 0, color: "#0f172a", name: "None" },
+                            { from: 1, to: 50, color: "#fbbf24", name: "Low" },
+                            { from: 51, to: 200, color: "#f97316", name: "High" },
+                            { from: 201, to: 1000000, color: "#ef4444", name: "Peak" }
+                        ]
+                    }
                 }
-              },
-              xaxis: { type: 'category' }
-          });
-          heatmapChart.render();
+            },
+            xaxis: { type: 'category' }
+        });
+        heatmapChart.render();
 
-          // 2. BAR CHART
-          if (barChart) barChart.destroy();
-          barChart = new ApexCharts(document.querySelector("#keywordBarChart"), {
-              series: [
-                { name: "Ooredoo", data: stats.map((s) => parseInt(s.ooredoo)), color: "#f43f5e" },
-                { name: "Dhiraagu", data: stats.map((s) => parseInt(s.dhiraagu)), color: "#FC7022" }
-              ],
-              chart: { type: "bar", height: 420, stacked: true, toolbar: { show: false }, foreColor: "#64748b" },
-              plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
-              xaxis: {
+        // 2. BAR CHART
+        if (barChart) barChart.destroy();
+        barChart = new ApexCharts(document.querySelector("#keywordBarChart"), {
+            series: [
+                { name: "Ooredoo", data: stats.map((s) => parseInt(s.ooredoo || 0)), color: "#f43f5e" },
+                { name: "Dhiraagu", data: stats.map((s) => parseInt(s.dhiraagu || 0)), color: "#FC7022" }
+            ],
+            chart: { type: "bar", height: 420, stacked: true, toolbar: { show: false }, foreColor: "#64748b" },
+            plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+            xaxis: {
                 categories: categories,
                 labels: { rotate: -45, rotateAlways: true, maxHeight: 120, style: { fontSize: "11px", fontWeight: 700 } }
-              },
-              grid: { borderColor: "#1e293b", strokeDashArray: 4, padding: { bottom: 40 } },
-              legend: { position: "top", horizontalAlign: "right", offsetY: -10 }
-          });
-          barChart.render();
+            },
+            grid: { borderColor: "#1e293b", strokeDashArray: 4, padding: { bottom: 40 } },
+            legend: { position: "top", horizontalAlign: "right", offsetY: -10 }
+        });
+        barChart.render();
 
-          // 3. DONUT
-          if (donutChart) donutChart.destroy();
-          donutChart = new ApexCharts(document.querySelector("#operatorDonut"), {
-              series: [stats.reduce((a, b) => a + parseInt(b.ooredoo), 0), stats.reduce((a, b) => a + parseInt(b.dhiraagu), 0)],
-              chart: { type: "donut", height: 280 },
-              labels: ["Ooredoo", "Dhiraagu"],
-              colors: ["#f43f5e", "#FC7022"],
-              stroke: { show: false },
-              plotOptions: { pie: { donut: { size: "82%", labels: { show: true, total: { show: true, label: "TOTAL", color: "#64748b" }, value: { color: "#fff" } } } } },
-              legend: { show: false }
-          });
-          donutChart.render();
+        // 3. DONUT
+        if (donutChart) donutChart.destroy();
+        donutChart = new ApexCharts(document.querySelector("#operatorDonut"), {
+            series: [stats.reduce((a, b) => a + parseInt(b.ooredoo || 0), 0), stats.reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0)],
+            chart: { type: "donut", height: 280 },
+            labels: ["Ooredoo", "Dhiraagu"],
+            colors: ["#f43f5e", "#FC7022"],
+            stroke: { show: false },
+            plotOptions: { pie: { donut: { size: "82%", labels: { show: true, total: { show: true, label: "TOTAL", color: "#64748b" }, value: { color: "#fff" } } } } },
+            legend: { show: false }
+        });
+        donutChart.render();
 
-          // 4. TREND LINE
-          const kws = (currentProgramName === "Komme Gadiyaku Inaameh") 
-                        ? promoOrder 
-                        : [...new Set(trendData.map((d) => d.keyword))];
-          const ds = [...new Set(trendData.map((d) => d.day))].sort();
-          const trendSeries = kws.map((kw) => ({
+        // 4. TREND LINE
+        const kws = (currentProgramName === "Komme Gadiyaku Inaameh") 
+                    ? promoOrder 
+                    : [...new Set(trendData.map((d) => d.keyword))];
+        const ds = [...new Set(trendData.map((d) => d.day))].sort();
+        const trendSeries = kws.map((kw) => ({
             name: kw,
             data: ds.map((day) => {
-              const entry = trendData.find((d) => d.day === day && d.keyword === kw);
-              return entry ? parseInt(entry.count) : 0;
+                const entry = trendData.find((d) => d.day === day && d.keyword === kw);
+                return entry ? parseInt(entry.count) : 0;
             }),
-          }));
+        }));
 
-          if (trendChart) trendChart.destroy();
-          trendChart = new ApexCharts(document.querySelector("#dailyTrendLineChart"), {
-              series: trendSeries,
-              chart: { type: "line", height: 400, toolbar: { show: false }, foreColor: "#64748b" },
-              colors: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#10b981", "#6366f1", "#d946ef", "#f97316", "#14b8a6"],
-              stroke: { curve: "smooth", width: 3 },
-              xaxis: { categories: ds },
-              grid: { borderColor: "#1e293b" },
-              legend: { position: 'top', horizontalAlign: 'center' }
-          });
-          trendChart.render();
+        if (trendChart) trendChart.destroy();
+        trendChart = new ApexCharts(document.querySelector("#dailyTrendLineChart"), {
+            series: trendSeries,
+            chart: { type: "line", height: 400, toolbar: { show: false }, foreColor: "#64748b" },
+            colors: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#10b981", "#6366f1", "#d946ef", "#f97316", "#14b8a6"],
+            stroke: { curve: "smooth", width: 3 },
+            xaxis: { categories: ds },
+            grid: { borderColor: "#1e293b" },
+            legend: { position: 'top', horizontalAlign: 'center' }
+        });
+        trendChart.render();
 
-        } catch (err) { console.error(err); }
-      }
+    } catch (err) { 
+        console.error("refreshDetail Error:", err); 
+    }
+}
 
       socket.on("dataUpdated", refreshDetail);
       window.onload = refreshDetail;
