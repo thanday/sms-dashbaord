@@ -148,7 +148,7 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
   const { date, keyword } = req.query; 
 
   try {
-      // 1. Precise Time Slots matching your Export tool
+      // 1. Time Slots must be identical to Export Logic
       const timeSlots = {
           'AA': { start: '13:00:00', end: '13:59:59' },
           'BB': { start: '14:00:00', end: '14:59:59' },
@@ -164,10 +164,11 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
           'MM': { start: '00:00:00', end: '00:59:59', nextDay: true }
       };
 
-      const slot = timeSlots[keyword.toUpperCase()];
+      const kw = keyword.toUpperCase();
+      const slot = timeSlots[kw];
       if (!slot) return res.status(400).json({ error: "Invalid Slot" });
 
-      // 2. Handle the Midnight Crossover
+      // 2. Midnight Date Shift
       let searchDate = date;
       if (slot.nextDay) {
           const d = new Date(date);
@@ -175,23 +176,26 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
           searchDate = d.toISOString().split('T')[0];
       }
 
-      // 3. Database Query
+      // 3. Database Query (Grabs all messages in that hour)
       const result = await pool.query(
           `SELECT msisdn, message_content FROM sms_logs 
            WHERE keyword_id = (SELECT id FROM keywords WHERE name = $1 AND program_id = $2)
            AND received_at >= $3::timestamp + $4::interval
            AND received_at <= $3::timestamp + $5::interval`,
-          [keyword.toUpperCase(), programId, searchDate, slot.start, slot.end]
+          [kw, programId, searchDate, slot.start, slot.end]
       );
 
-      // 4. The "Inaameh Filter" (Crucial for matching ZIP export)
-      const filteredNumbers = result.rows.filter(row => {
+      // 4. THE FILTER: Must allow duplicates and "SSTV"
+      const numbers = [];
+      result.rows.forEach(row => {
           const msg = (row.message_content || "").toString().trim().toUpperCase();
-          // Accept if it's the slot keyword OR the program master keyword
-          return msg === keyword.toUpperCase() || msg === "SSTV";
-      }).map(row => row.msisdn);
+          // Accept the specific keyword OR the master "SSTV" keyword
+          if (msg === kw || msg === "SSTV") {
+              numbers.push(row.msisdn); // Allow duplicates to match .txt file
+          }
+      });
 
-      res.json({ numbers: filteredNumbers });
+      res.json({ numbers }); // This array will now exactly match the .txt line count
   } catch (err) {
       res.status(500).json({ error: err.message });
   }
