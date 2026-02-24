@@ -142,7 +142,6 @@ app.delete("/api/clear-draw/:programId", isAdmin, async (req, res) => {
   }
 });
 
-// Add or Update this in server.js
 app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
   const { programId } = req.params;
   const { date, keyword } = req.query; 
@@ -163,8 +162,8 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
           'MM': { start: '00:00:00', end: '00:59:59', nextDay: true }
       };
 
-      const kw = keyword.toUpperCase();
-      const slot = timeSlots[kw];
+      const kwName = keyword.toUpperCase().trim();
+      const slot = timeSlots[kwName];
       if (!slot) return res.status(400).json({ error: "Invalid Slot" });
 
       let searchDate = date;
@@ -179,16 +178,18 @@ app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
            WHERE keyword_id = (SELECT id FROM keywords WHERE name = $1 AND program_id = $2)
            AND received_at >= $3::timestamp + $4::interval
            AND received_at <= $3::timestamp + $5::interval`,
-          [kw, programId, searchDate, slot.start, slot.end]
+          [kwName, programId, searchDate, slot.start, slot.end]
       );
 
-      const numbers = [];
-      result.rows.forEach(row => {
+      const numbers = result.rows.filter(row => {
           const msg = (row.message_content || "").toString().trim().toUpperCase();
-          if (msg === kw || msg === "SSTV") {
-              numbers.push(row.msisdn); 
-          }
-      });
+          
+          const matchesKeyword = msg === kwName;
+          const matchesKeywordWithSSTV = msg.startsWith(`${kwName} SSTV`) || msg.startsWith(`${kwName}SSTV`);
+          const isSSTV = msg === "SSTV";
+
+          return matchesKeyword || matchesKeywordWithSSTV || isSSTV;
+      }).map(row => row.msisdn);
 
       res.json({ numbers }); 
   } catch (err) {
