@@ -56,7 +56,7 @@ app.post("/login", (req, res) => {
    user: "postgres",
    host: "localhost",
    database: "sms_stats",
-   password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
+   password: "Sun.Media@94.6", 
    port: 5432,
  });
 
@@ -161,7 +161,6 @@ app.get("/api/last-sync", async (req, res) => {
   }
 });
 
-// 1. Check if draw was already taken
 app.get("/api/check-draw/:programId", isAdmin, async (req, res) => {
   const { date } = req.query;
   const { programId } = req.params;
@@ -176,7 +175,6 @@ app.get("/api/check-draw/:programId", isAdmin, async (req, res) => {
   }
 });
 
-// 2. Clear draw if user wants to replace it
 app.delete("/api/clear-draw/:programId", isAdmin, async (req, res) => {
   const { date } = req.query;
   const { programId } = req.params;
