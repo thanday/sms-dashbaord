@@ -7,7 +7,7 @@ const csv = require("csv-parser");
 const fs = require("fs");
 const session = require("express-session"); // Added
 const path = require("path");
-
+const axios = require('axios');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -52,14 +52,20 @@ app.post("/login", (req, res) => {
   }
 });
 
+// const pool = new Pool({
+//   user: "postgres",
+//   host: "localhost",
+//   database: "sms_stats",
+//   password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
+//   port: 5432,
+// });
 const pool = new Pool({
-  user: "postgres",
+  user: "azman",
   host: "localhost",
   database: "sms_stats",
-  password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
+  password: "", // Ensure this is exactly like your server.js
   port: 5432,
 });
-
 // --- PAGE ROUTES ---
 // Dashboard is now Home
 app.get("/", (req, res) => res.render("dashboard"));
@@ -100,6 +106,55 @@ app.get("/logout", (req, res) => {
 });
 
 // --- API: PROGRAMS ---
+
+app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
+  const { day, date, programId } = req.body;
+  
+  try {
+    // 1. Fetch Winners and Active Times from DB
+    const result = await pool.query(`
+      SELECT w.keyword, k.active_time, w.msisdn
+      FROM draw_winners w
+      JOIN keywords k ON w.keyword = k.name AND w.program_id = k.program_id
+      WHERE w.day_number = $1 AND w.program_id = $2
+      ORDER BY 
+        CASE w.keyword 
+          WHEN 'AA' THEN 1 WHEN 'BB' THEN 2 WHEN 'CC' THEN 3 WHEN 'DD' THEN 4
+          WHEN 'EE' THEN 5 WHEN 'FF' THEN 6 WHEN 'GG' THEN 7 WHEN 'HH' THEN 8
+          WHEN 'JJ' THEN 9 WHEN 'KK' THEN 10 WHEN 'LL' THEN 11 WHEN 'MM' THEN 12
+        END ASC;
+    `, [day, programId]);
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: "No winners found to broadcast." });
+    }
+
+    // 2. Format the Telegram Message
+    const d = new Date(date);
+    const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    
+    let message = `🏆 *DAY ${day} (${formattedDate}) - Winners*\n\n`;
+    
+    result.rows.forEach(row => {
+      message += `🔹 *${row.keyword}* (${row.active_time}) - \`${row.msisdn}\`\n`;
+    });
+
+    // 3. Send to the Group Chat
+    const botToken = '8609195590:AAGqf9Qauwz54TMFOKKeU1ZV3upqzfGj4wk';
+    const chatId = '-5284447996'; 
+    
+    const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'Markdown'
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("BROADCAST ERROR:", err.response ? err.response.data : err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get("/api/last-sync", async (req, res) => {
   try {

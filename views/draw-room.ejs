@@ -127,6 +127,13 @@
         >
           Start All Draws
         </button>
+
+        <button
+          onclick="broadcastToTelegram()"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg"
+        >
+          Send winners list to Telegram
+        </button>
       </div>
     </div>
 
@@ -275,6 +282,39 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ msisdn, keyword, programId, date }),
         });
+      }
+
+      async function broadcastToTelegram() {
+        const dayText = document.getElementById("dayTag").innerText;
+        const dayMatch = dayText.match(/DAY (\d+)/);
+        if (!dayMatch) return alert("Could not determine Day Number");
+
+        const day = dayMatch[1];
+        const date = document.getElementById("drawDate").value;
+        const programId = "<%= programId %>";
+
+        if (
+          !confirm(
+            `Do you want to broadcast Day ${day} winners to the Telegram group?`
+          )
+        )
+          return;
+
+        try {
+          const res = await fetch("/api/broadcast-winners", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ day, date, programId }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert("🚀 Winners list sent to Telegram!");
+          } else {
+            alert("❌ Error: " + data.error);
+          }
+        } catch (e) {
+          alert("❌ Failed to connect to server");
+        }
       }
 
       window.addEventListener("keydown", (e) => {
