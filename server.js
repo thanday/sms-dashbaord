@@ -143,53 +143,57 @@ app.delete("/api/clear-draw/:programId", isAdmin, async (req, res) => {
 });
 
 // Add or Update this in server.js
-app.get("/api/draw-numbers/:programId", isAdmin, async (req, res) => {
+app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
   const { programId } = req.params;
-  const { date, keyword } = req.query; // Takes date from the picker
+  const { date, keyword } = req.query; 
 
   try {
-    const timeSlots = {
-      AA: { start: "13:00:00", end: "13:59:59" },
-      BB: { start: "14:00:00", end: "14:59:59" },
-      CC: { start: "15:00:00", end: "15:59:59" },
-      DD: { start: "16:00:00", end: "16:59:59" },
-      EE: { start: "17:00:00", end: "17:59:59" },
-      FF: { start: "18:00:00", end: "18:59:59" },
-      GG: { start: "19:00:00", end: "19:59:59" },
-      HH: { start: "20:00:00", end: "20:59:59" },
-      JJ: { start: "21:00:00", end: "21:59:59" },
-      KK: { start: "22:00:00", end: "22:59:59" },
-      LL: { start: "23:00:00", end: "23:59:59" },
-      MM: { start: "00:00:00", end: "00:59:59", nextDay: true },
-    };
+      // 1. Precise Time Slots matching your Export tool
+      const timeSlots = {
+          'AA': { start: '13:00:00', end: '13:59:59' },
+          'BB': { start: '14:00:00', end: '14:59:59' },
+          'CC': { start: '15:00:00', end: '15:59:59' },
+          'DD': { start: '16:00:00', end: '16:59:59' },
+          'EE': { start: '17:00:00', end: '17:59:59' },
+          'FF': { start: '18:00:00', end: '18:59:59' },
+          'GG': { start: '19:00:00', end: '19:59:59' },
+          'HH': { start: '20:00:00', end: '20:59:59' },
+          'JJ': { start: '21:00:00', end: '21:59:59' },
+          'KK': { start: '22:00:00', end: '22:59:59' },
+          'LL': { start: '23:00:00', end: '23:59:59' },
+          'MM': { start: '00:00:00', end: '00:59:59', nextDay: true }
+      };
 
-    const slot = timeSlots[keyword.toUpperCase()];
-    let searchDate = date;
-    if (slot.nextDay) {
-      const d = new Date(date);
-      d.setDate(d.getDate() + 1);
-      searchDate = d.toISOString().split("T")[0];
-    }
+      const slot = timeSlots[keyword.toUpperCase()];
+      if (!slot) return res.status(400).json({ error: "Invalid Slot" });
 
-    const result = await pool.query(
-      `SELECT msisdn, message_content FROM sms_logs 
+      // 2. Handle the Midnight Crossover
+      let searchDate = date;
+      if (slot.nextDay) {
+          const d = new Date(date);
+          d.setDate(d.getDate() + 1);
+          searchDate = d.toISOString().split('T')[0];
+      }
+
+      // 3. Database Query
+      const result = await pool.query(
+          `SELECT msisdn, message_content FROM sms_logs 
            WHERE keyword_id = (SELECT id FROM keywords WHERE name = $1 AND program_id = $2)
            AND received_at >= $3::timestamp + $4::interval
            AND received_at <= $3::timestamp + $5::interval`,
-      [keyword, programId, searchDate, slot.start, slot.end]
-    );
+          [keyword.toUpperCase(), programId, searchDate, slot.start, slot.end]
+      );
 
-    // Filter using the logic we agreed on earlier (AA, aa, sstv, SSTV)
-    const numbers = result.rows
-      .filter((row) => {
-        const msg = (row.message_content || "").toString().trim().toUpperCase();
-        return msg === keyword.toUpperCase() || msg === "SSTV";
-      })
-      .map((row) => row.msisdn);
+      // 4. The "Inaameh Filter" (Crucial for matching ZIP export)
+      const filteredNumbers = result.rows.filter(row => {
+          const msg = (row.message_content || "").toString().trim().toUpperCase();
+          // Accept if it's the slot keyword OR the program master keyword
+          return msg === keyword.toUpperCase() || msg === "SSTV";
+      }).map(row => row.msisdn);
 
-    res.json({ numbers });
+      res.json({ numbers: filteredNumbers });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message });
   }
 });
 
