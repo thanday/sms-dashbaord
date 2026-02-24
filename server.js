@@ -52,20 +52,14 @@ app.post("/login", (req, res) => {
   }
 });
 
-// const pool = new Pool({
-//   user: "postgres",
-//   host: "localhost",
-//   database: "sms_stats",
-//   password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
-//   port: 5432,
-// });
-const pool = new Pool({
-  user: "azman",
-  host: "localhost",
-  database: "sms_stats",
-  password: "", // Ensure this is exactly like your server.js
-  port: 5432,
-});
+ const pool = new Pool({
+   user: "postgres",
+   host: "localhost",
+   database: "sms_stats",
+   password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
+   port: 5432,
+ });
+
 // --- PAGE ROUTES ---
 // Dashboard is now Home
 app.get("/", (req, res) => res.render("dashboard"));
