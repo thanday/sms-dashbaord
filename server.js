@@ -33,38 +33,30 @@ app.use(
 // --- AUTH MIDDLEWARE ---
 const isAdmin = (req, res, next) => {
   if (req.session.authenticated) {
-      next();
+    next();
   } else {
-      req.session.returnTo = req.originalUrl; 
-      res.redirect('/login');
+    req.session.returnTo = req.originalUrl;
+    res.redirect("/login");
   }
 };
 
-app.post('/login', (req, res) => {
+app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === 'sstv@2026') {
-      req.session.authenticated = true;
-      const redirectTo = req.session.returnTo || '/admin'; 
-      delete req.session.returnTo; 
-      res.redirect(redirectTo);
+  if (username === "admin" && password === "sstv@2026") {
+    req.session.authenticated = true;
+    const redirectTo = req.session.returnTo || "/admin";
+    delete req.session.returnTo;
+    res.redirect(redirectTo);
   } else {
-      res.render('login', { error: 'Invalid Username or Password' });
+    res.render("login", { error: "Invalid Username or Password" });
   }
 });
 
-// const pool = new Pool({
-//   user: "postgres",
-//   host: "localhost",
-//   database: "sms_stats",
-//   password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
-//   port: 5432,
-// });
-
 const pool = new Pool({
-  user: "azman",
+  user: "postgres",
   host: "localhost",
   database: "sms_stats",
-  password: "", // Ensure this is exactly like your server.js
+  password: "Sun.Media@94.6", // Ensure this is exactly like your server.js
   port: 5432,
 });
 
@@ -109,92 +101,102 @@ app.get("/logout", (req, res) => {
 
 // --- API: PROGRAMS ---
 
-app.get('/api/last-sync', async (req, res) => {
+app.get("/api/last-sync", async (req, res) => {
   try {
-      const result = await pool.query('SELECT MAX(received_at) as last_sync FROM sms_logs');
-      res.json(result.rows[0]);
+    const result = await pool.query(
+      "SELECT MAX(received_at) as last_sync FROM sms_logs"
+    );
+    res.json(result.rows[0]);
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // 1. Check if draw was already taken
-app.get('/api/check-draw/:programId', isAdmin, async (req, res) => {
+app.get("/api/check-draw/:programId", isAdmin, async (req, res) => {
   const { date } = req.query;
   const { programId } = req.params;
   try {
-      const result = await pool.query(
-          'SELECT id FROM draw_winners WHERE program_id = $1 AND draw_date = $2 LIMIT 1',
-          [programId, date]
-      );
-      res.json({ exists: result.rows.length > 0 });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const result = await pool.query(
+      "SELECT id FROM draw_winners WHERE program_id = $1 AND draw_date = $2 LIMIT 1",
+      [programId, date]
+    );
+    res.json({ exists: result.rows.length > 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 2. Clear draw if user wants to replace it
-app.delete('/api/clear-draw/:programId', isAdmin, async (req, res) => {
+app.delete("/api/clear-draw/:programId", isAdmin, async (req, res) => {
   const { date } = req.query;
   const { programId } = req.params;
   try {
-      await pool.query(
-          'DELETE FROM draw_winners WHERE program_id = $1 AND draw_date = $2',
-          [programId, date]
-      );
-      res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    await pool.query(
+      "DELETE FROM draw_winners WHERE program_id = $1 AND draw_date = $2",
+      [programId, date]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Add or Update this in server.js
-app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
+app.get("/api/draw-numbers/:programId", isAdmin, async (req, res) => {
   const { programId } = req.params;
   const { date, keyword } = req.query; // Takes date from the picker
 
   try {
-      const timeSlots = {
-          'AA': { start: '13:00:00', end: '13:59:59' },
-          'BB': { start: '14:00:00', end: '14:59:59' },
-          'CC': { start: '15:00:00', end: '15:59:59' },
-          'DD': { start: '16:00:00', end: '16:59:59' },
-          'EE': { start: '17:00:00', end: '17:59:59' },
-          'FF': { start: '18:00:00', end: '18:59:59' },
-          'GG': { start: '19:00:00', end: '19:59:59' },
-          'HH': { start: '20:00:00', end: '20:59:59' },
-          'JJ': { start: '21:00:00', end: '21:59:59' },
-          'KK': { start: '22:00:00', end: '22:59:59' },
-          'LL': { start: '23:00:00', end: '23:59:59' },
-          'MM': { start: '00:00:00', end: '00:59:59', nextDay: true } 
-      };
+    const timeSlots = {
+      AA: { start: "13:00:00", end: "13:59:59" },
+      BB: { start: "14:00:00", end: "14:59:59" },
+      CC: { start: "15:00:00", end: "15:59:59" },
+      DD: { start: "16:00:00", end: "16:59:59" },
+      EE: { start: "17:00:00", end: "17:59:59" },
+      FF: { start: "18:00:00", end: "18:59:59" },
+      GG: { start: "19:00:00", end: "19:59:59" },
+      HH: { start: "20:00:00", end: "20:59:59" },
+      JJ: { start: "21:00:00", end: "21:59:59" },
+      KK: { start: "22:00:00", end: "22:59:59" },
+      LL: { start: "23:00:00", end: "23:59:59" },
+      MM: { start: "00:00:00", end: "00:59:59", nextDay: true },
+    };
 
-      const slot = timeSlots[keyword.toUpperCase()];
-      let searchDate = date;
-      if (slot.nextDay) {
-          const d = new Date(date);
-          d.setDate(d.getDate() + 1);
-          searchDate = d.toISOString().split('T')[0];
-      }
+    const slot = timeSlots[keyword.toUpperCase()];
+    let searchDate = date;
+    if (slot.nextDay) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + 1);
+      searchDate = d.toISOString().split("T")[0];
+    }
 
-      const result = await pool.query(
-          `SELECT msisdn, message_content FROM sms_logs 
+    const result = await pool.query(
+      `SELECT msisdn, message_content FROM sms_logs 
            WHERE keyword_id = (SELECT id FROM keywords WHERE name = $1 AND program_id = $2)
            AND received_at >= $3::timestamp + $4::interval
            AND received_at <= $3::timestamp + $5::interval`,
-          [keyword, programId, searchDate, slot.start, slot.end]
-      );
+      [keyword, programId, searchDate, slot.start, slot.end]
+    );
 
-      // Filter using the logic we agreed on earlier (AA, aa, sstv, SSTV)
-      const numbers = result.rows.filter(row => {
-          const msg = (row.message_content || "").toString().trim().toUpperCase();
-          return msg === keyword.toUpperCase() || msg === "SSTV";
-      }).map(row => row.msisdn);
+    // Filter using the logic we agreed on earlier (AA, aa, sstv, SSTV)
+    const numbers = result.rows
+      .filter((row) => {
+        const msg = (row.message_content || "").toString().trim().toUpperCase();
+        return msg === keyword.toUpperCase() || msg === "SSTV";
+      })
+      .map((row) => row.msisdn);
 
-      res.json({ numbers });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({ numbers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Route to export winners as CSV
-app.get('/api/export-winners', isAdmin, async (req, res) => {
+app.get("/api/export-winners", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           SELECT w.day_number as "Day", w.draw_date as "Date", 
                  w.keyword as "Slot", w.msisdn as "Phone Number",
                  p.name as "Program"
@@ -203,70 +205,83 @@ app.get('/api/export-winners', isAdmin, async (req, res) => {
           ORDER BY w.draw_date DESC, w.day_number DESC
       `);
 
-      const rows = result.rows;
-      if (rows.length === 0) return res.status(404).send("No winners to export.");
+    const rows = result.rows;
+    if (rows.length === 0) return res.status(404).send("No winners to export.");
 
-      // Define CSV Headers
-      const headers = Object.keys(rows[0]).join(',') + '\n';
-      
-      // Map data to CSV rows
-      const csvData = rows.map(row => 
-          Object.values(row).map(val => `"${val}"`).join(',')
-      ).join('\n');
+    // Define CSV Headers
+    const headers = Object.keys(rows[0]).join(",") + "\n";
 
-      // Set Headers to force browser download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=SSTV_Winners_${new Date().toISOString().split('T')[0]}.csv`);
-      
-      res.status(200).send(headers + csvData);
+    // Map data to CSV rows
+    const csvData = rows
+      .map((row) =>
+        Object.values(row)
+          .map((val) => `"${val}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    // Set Headers to force browser download
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=SSTV_Winners_${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
+
+    res.status(200).send(headers + csvData);
   } catch (err) {
-      res.status(500).send("Export failed: " + err.message);
+    res.status(500).send("Export failed: " + err.message);
   }
 });
 
 // Get Day Number Helper
 const getDayNumber = (dateStr) => {
-  const start = new Date('2026-02-18');
+  const start = new Date("2026-02-18");
   const current = new Date(dateStr);
   return Math.floor((current - start) / (1000 * 60 * 60 * 24)) + 1;
 };
 
 // API to save a winner
-app.post('/api/save-winner', isAdmin, async (req, res) => {
+app.post("/api/save-winner", isAdmin, async (req, res) => {
   const { msisdn, keyword, programId, date } = req.body;
   const dayNum = getDayNumber(date);
   try {
-      await pool.query(
-          'INSERT INTO draw_winners (program_id, msisdn, keyword, draw_date, day_number) VALUES ($1, $2, $3, $4, $5)',
-          [programId, msisdn, keyword, date, dayNum]
-      );
-      res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    await pool.query(
+      "INSERT INTO draw_winners (program_id, msisdn, keyword, draw_date, day_number) VALUES ($1, $2, $3, $4, $5)",
+      [programId, msisdn, keyword, date, dayNum]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // View for Winners Gallery
-app.get('/dashboard/winners', async (req, res) => {
+app.get("/dashboard/winners", async (req, res) => {
   const result = await pool.query(`
       SELECT w.*, p.name as program_name 
       FROM draw_winners w 
       JOIN programs p ON w.program_id = p.id 
       ORDER BY draw_date DESC, day_number DESC, keyword ASC
   `);
-  res.render('winners-gallery', { winners: result.rows });
+  res.render("winners-gallery", { winners: result.rows });
 });
 
-app.get('/dashboard/program/:id/draw', isAdmin, async (req, res) => {
+app.get("/dashboard/program/:id/draw", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query('SELECT name FROM programs WHERE id = $1', [req.params.id]);
-      if (result.rows.length === 0) {
-          return res.status(404).send("Program not found");
-      }
-      res.render('draw-room', { 
-          programName: result.rows[0].name, 
-          programId: req.params.id 
-      });
+    const result = await pool.query("SELECT name FROM programs WHERE id = $1", [
+      req.params.id,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).send("Program not found");
+    }
+    res.render("draw-room", {
+      programName: result.rows[0].name,
+      programId: req.params.id,
+    });
   } catch (err) {
-      res.status(500).send(err.message);
+    res.status(500).send(err.message);
   }
 });
 
