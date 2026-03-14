@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madheena Quiz (MQ) | SSTV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #02040a; color: #94a3b8; }
+        .glass { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.03); }
+        .status-pill { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="max-w-6xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-black text-white tracking-tighter uppercase italic">Madheena Quiz</h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">30-Day Ramadan Competition</p>
+                </div>
+            </div>
+            <div class="glass px-6 py-3 rounded-2xl flex items-center gap-4">
+                <div class="text-right">
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Operator Role</p>
+                    <p class="text-white text-xs font-bold uppercase"><%= role %></p>
+                </div>
+                <a href="/logout" class="text-slate-500 hover:text-white transition-colors ml-2">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <div class="lg:col-span-1">
+                <div class="glass p-8 rounded-[2rem] shadow-2xl h-full">
+                    <h2 class="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
+                        Set Correct Key
+                    </h2>
+                    <form id="answerForm" class="space-y-6">
+                        <div>
+                            <label class="text-[9px] font-black text-slate-500 uppercase ml-2 mb-1 block">Competition Day</label>
+                            <input type="number" id="day" placeholder="e.g. 1" required class="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-3.5 text-white focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-black text-slate-500 uppercase ml-2 mb-1 block">Correct Option</label>
+                            <select id="correctOption" class="w-full bg-black/40 border border-white/5 rounded-xl px-5 py-3.5 text-white focus:border-emerald-500 outline-none transition-all">
+                                <option value="A">Option A</option>
+                                <option value="B">Option B</option>
+                                <option value="C">Option C</option>
+                                <option value="D">Option D</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-emerald-900/20">
+                            Update Leaderboard
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="glass rounded-[2rem] overflow-hidden shadow-2xl h-full flex flex-col">
+                    <div class="p-8 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                        <h2 class="text-xs font-black text-blue-500 uppercase tracking-[0.2em]">Current Leaders (Potential Winners)</h2>
+                        <button onclick="exportToTxt()" class="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all">
+                            Export Draw (.txt)
+                        </button>
+                    </div>
+                    <div class="flex-grow overflow-y-auto custom-scrollbar max-h-[300px]">
+                        <table class="w-full text-left">
+                            <thead class="bg-black/20 text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                                <tr>
+                                    <th class="px-8 py-3">Phone Number</th>
+                                    <th class="px-8 py-3 text-right">Correct Days</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody" class="divide-y divide-white/5">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-sm font-black text-white uppercase tracking-[0.3em] mb-6 flex items-center gap-3">
+            <span class="h-4 w-1 bg-blue-500 rounded-full"></span> Daily Log Breakdown
+        </h2>
+        <div id="dailyListContainer" class="space-y-4">
+            </div>
+    </div>
+
+    <script>
+        const startDay = new Date('2026-02-18');
+
+        function getCompDate(dayNumber) {
+            const date = new Date(startDay);
+            date.setDate(date.getDate() + (parseInt(dayNumber) - 1));
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        }
+
+        async function loadLeaderboard() {
+            const res = await fetch('/api/mq/leaderboard');
+            const data = await res.json();
+            const body = document.getElementById('leaderboardBody');
+            
+            if (data.length === 0) {
+                body.innerHTML = '<tr><td colspan="2" class="p-10 text-center text-slate-600 italic text-xs">No key set. Waiting for data...</td></tr>';
+                return;
+            }
+
+            body.innerHTML = data.map(row => `
+                <tr class="group hover:bg-white/[0.02]">
+                    <td class="px-8 py-4 font-mono text-white text-sm tracking-widest">${row.msisdn}</td>
+                    <td class="px-8 py-4 text-right">
+                        <span class="text-emerald-500 font-black text-xs">${row.correct_days} / 30</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadDailyList() {
+            const res = await fetch('/api/mq/daily-details');
+            const data = await res.json();
+            const container = document.getElementById('dailyListContainer');
+
+            const grouped = data.reduce((acc, obj) => {
+                const d = obj.comp_day;
+                if (!acc[d]) acc[d] = [];
+                acc[d].push(obj.msisdn);
+                return acc;
+            }, {});
+
+            const sortedDays = Object.keys(grouped).sort((a, b) => b - a);
+
+            container.innerHTML = sortedDays.map(day => `
+                <div class="glass rounded-3xl overflow-hidden transition-all">
+                    <button onclick="toggleDay(${day})" class="w-full p-6 flex justify-between items-center hover:bg-white/5 transition-all">
+                        <div class="flex items-center gap-4">
+                            <span class="bg-blue-600/10 text-blue-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter">Day ${day}</span>
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">${getCompDate(day)}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-emerald-500 text-[10px] font-black uppercase">${grouped[day].length} Correct Entries</span>
+                            <svg id="icon-${day}" class="text-slate-600 transition-transform" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                    </button>
+                    <div id="day-content-${day}" class="hidden p-8 grid grid-cols-2 md:grid-cols-5 gap-3 bg-black/40 border-t border-white/5">
+                        ${grouped[day].map(phone => `
+                            <div class="bg-white/5 p-2 rounded-lg text-center border border-white/5 group hover:border-emerald-500/30 transition-all">
+                                <span class="text-slate-400 font-mono text-[11px] group-hover:text-emerald-500">${phone}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleDay(day) {
+            const el = document.getElementById(`day-content-${day}`);
+            const icon = document.getElementById(`icon-${day}`);
+            el.classList.toggle('hidden');
+            icon.style.transform = el.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        async function exportToTxt() {
+            const res = await fetch('/api/mq/leaderboard');
+            const data = await res.json();
+            if(data.length === 0) return alert("Nothing to export.");
+            
+            const content = data.map(row => row.msisdn).join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mq_top_scorers_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+        }
+
+        document.getElementById('answerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = e.submitter;
+            btn.innerText = 'Updating...';
+            
+            await fetch('/api/mq/set-answer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    day: document.getElementById('day').value,
+                    answer: document.getElementById('correctOption').value
+                })
+            });
+            
+            btn.innerText = 'Update Leaderboard';
+            loadLeaderboard();
+            loadDailyList();
+        };
+
+        // Initialize
+        loadLeaderboard();
+        loadDailyList();
+    </script>
+</body>
+</html>

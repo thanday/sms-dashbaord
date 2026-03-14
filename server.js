@@ -42,23 +42,35 @@ const isAdmin = (req, res, next) => {
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
+  
   if (username === "admin" && password === "sstv@2026") {
     req.session.authenticated = true;
-    const redirectTo = req.session.returnTo || "/admin";
-    delete req.session.returnTo;
-    res.redirect(redirectTo);
+    req.session.role = 'admin'; // Admin gets full access
+    res.redirect("/admin");
+  } else if (username === "marketing" && password === "marketing@2026") {
+    req.session.authenticated = true;
+    req.session.role = 'marketing'; // Marketing role
+    res.redirect("/hadhiyaa-badhiyaa");
   } else {
     res.render("login", { error: "Invalid Username or Password" });
   }
 });
 
- const pool = new Pool({
-   user: "postgres",
-   host: "localhost",
-   database: "sms_stats",
-   password: "Sun.Media@94.6", 
-   port: 5432,
- });
+  const pool = new Pool({
+    user: "postgres",
+    host: "localhost",
+    database: "sms_stats",
+    password: "Sun.Media@94.6", 
+    port: 5432,
+  });
+
+//  const pool = new Pool({
+//   user: "azman",
+//   host: "localhost",
+//   database: "sms_stats",
+//   password: "", 
+//   port: 5432,
+// });
 
 // --- PAGE ROUTES ---
 // Dashboard is now Home
@@ -100,6 +112,132 @@ app.get("/logout", (req, res) => {
 });
 
 // --- API: PROGRAMS ---
+
+app.get("/madheena-quiz", isAdmin, (req, res) => {
+  res.render("madheena-quiz", { role: req.session.role });
+});
+
+// hadhiyaa badhiyaa gift portal
+app.get("/hadhiyaa-badhiyaa", isAdmin, (req, res) => {
+  res.render("hadhiyaa-badhiyaa", { 
+      role: req.session.role 
+  });
+});
+
+// API: Check if phone exists
+app.get("/api/gifts/check/:phone", isAdmin, async (req, res) => {
+  const result = await pool.query(
+      "SELECT day_number FROM hadhiyaa_badhiyaa_gifts WHERE phone_number = $1 LIMIT 1", 
+      [req.params.phone]
+  );
+  if (result.rows.length > 0) {
+      res.json({ exists: true, day: result.rows[0].day_number });
+  } else {
+      res.json({ exists: false });
+  }
+});
+
+app.put("/api/gifts/update/:id", isAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { field, value } = req.body;
+  
+  const allowedFields = ['marketing_comments', 'status'];
+  const dbField = field === 'comments' ? 'marketing_comments' : 'status';
+  
+  try {
+      await pool.query(
+          `UPDATE hadhiyaa_badhiyaa_gifts SET ${dbField} = $1 WHERE id = $2`,
+          [value, id]
+      );
+      res.json({ success: true });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Insert new winner
+app.post("/api/gifts", isAdmin, async (req, res) => {
+  const { name, phone, age, day, comments, status } = req.body;
+  try {
+      await pool.query(
+          "INSERT INTO hadhiyaa_badhiyaa_gifts (participant_name, phone_number, age, day_number, marketing_comments, status) VALUES ($1, $2, $3, $4, $5, $6)",
+          [name, phone, age, day, comments, status]
+      );
+      res.json({ success: true });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+
+// API: Set or Update the correct answer key for a specific Day
+app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
+  const { day, answer } = req.body;
+  try {
+      await pool.query(
+          "INSERT INTO mq_correct_answers (day_number, correct_option) VALUES ($1, $2) ON CONFLICT (day_number) DO UPDATE SET correct_option = $2",
+          [day, answer]
+      );
+      res.json({ success: true });
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Leaderboard - Calculates who has the most correct answers across 30 days
+app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          WITH CorrectParticipants AS (
+              SELECT 
+                  m.msisdn, 
+                  COUNT(DISTINCT ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1)) as correct_days
+              FROM sms_messages m
+              JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1) = ca.day_number
+              WHERE m.keyword = 'MQ' 
+              AND UPPER(TRIM(m.message_text)) = UPPER(ca.correct_option)
+              AND m.created_at >= '2026-02-18 00:00:00'
+              GROUP BY m.msisdn
+          ),
+          MaxScore AS (
+              SELECT MAX(correct_days) as top_score FROM CorrectParticipants
+          )
+          SELECT cp.msisdn, cp.correct_days
+          FROM CorrectParticipants cp, MaxScore ms
+          WHERE cp.correct_days = ms.top_score
+          ORDER BY cp.msisdn;
+      `);
+      res.json(result.rows);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Daily Details - Shows unique correct phone numbers for each day
+app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT DISTINCT ON (comp_day, msisdn)
+              (DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1 AS comp_day,
+              m.msisdn
+          FROM sms_messages m
+          JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1) = ca.day_number
+          WHERE m.keyword = 'MQ' 
+          AND UPPER(TRIM(m.message_text)) = UPPER(ca.correct_option)
+          AND m.created_at >= '2026-02-18 00:00:00'
+          ORDER BY comp_day DESC, msisdn ASC;
+      `);
+      res.json(result.rows);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Get List
+app.get("/api/gifts", isAdmin, async (req, res) => {
+  const result = await pool.query("SELECT * FROM hadhiyaa_badhiyaa_gifts ORDER BY created_at DESC");
+  res.json(result.rows);
+});
 
 app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
   const { day, date, programId } = req.body;
