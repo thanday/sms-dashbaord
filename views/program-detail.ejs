@@ -26,6 +26,36 @@
                 <h1 class="text-5xl font-black text-white tracking-tighter uppercase"><%= programName %></h1>
                 <p class="text-slate-500 mt-2 font-medium italic">Real-time performance analytics</p>
             </div>
+            <% 
+            const specialPortals = {
+              '15': { name: 'MQ Portal', url: '/madheena-quiz', desc: '30-Day Ramadan Leaderboard & Draw' },
+              '20': { name: 'Game Portal', url: '/hadhiyaa-badhiyaa', desc: 'Game Show Management & Stats' }
+            };
+            
+            if (specialPortals[programId]) { 
+          %>
+              <div style="background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
+                  <div style="display: flex; align-items: center; gap: 1.25rem;">
+                      <div style="background: rgba(16, 185, 129, 0.1); width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(16, 185, 129, 0.2);">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                          </svg>
+                      </div>
+                      <div>
+                          <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                              <%= specialPortals[programId].name %>
+                          </h4>
+                          <p style="color: #64748b; margin: 2px 0 0 0; font-size: 0.75rem; font-weight: 500;">
+                              <%= specialPortals[programId].desc %>
+                          </p>
+                      </div>
+                  </div>
+          
+                  <a href="<%= specialPortals[programId].url %>" style="background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.025em; transition: all 0.2s; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.3);" onmouseover="this.style.background='#059669'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#10b981'; this.style.transform='translateY(0)'">
+                      Open Analytics
+                  </a>
+              </div>
+          <% } %>
 
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center min-w-[220px] shadow-2xl">
                 <span id="grandTotal" class="text-5xl font-black text-white block tracking-tighter">0</span>

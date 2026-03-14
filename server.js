@@ -32,12 +32,12 @@ app.use(
 
 // --- AUTH MIDDLEWARE ---
 const isAdmin = (req, res, next) => {
-  if (req.session.authenticated) {
-    next();
-  } else {
-    req.session.returnTo = req.originalUrl;
-    res.redirect("/login");
+  if (req.session.role === 'admin' || req.session.role === 'producer' || req.session.role === 'marketing') {
+      return next();
   }
+  // Store the original URL they wanted to visit
+  req.session.returnTo = req.originalUrl; 
+  res.redirect('/login');
 };
 
 app.post("/login", (req, res) => {
@@ -45,32 +45,42 @@ app.post("/login", (req, res) => {
   
   if (username === "admin" && password === "sstv@2026") {
     req.session.authenticated = true;
-    req.session.role = 'admin'; // Admin gets full access
-    res.redirect("/admin");
+    req.session.role = 'admin';
+    
+    // Check if there is a saved URL, otherwise go to /admin
+    const redirectUrl = req.session.returnTo || "/admin";
+    delete req.session.returnTo; // Clear it after use
+    res.redirect(redirectUrl);
+
   } else if (username === "marketing" && password === "marketing@2026") {
     req.session.authenticated = true;
-    req.session.role = 'marketing'; // Marketing role
-    res.redirect("/hadhiyaa-badhiyaa");
+    req.session.role = 'marketing';
+    
+    // Check if there is a saved URL, otherwise go to /hadhiyaa-badhiyaa
+    const redirectUrl = req.session.returnTo || "/hadhiyaa-badhiyaa";
+    delete req.session.returnTo; 
+    res.redirect(redirectUrl);
+
   } else {
     res.render("login", { error: "Invalid Username or Password" });
   }
 });
 
-  const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    database: "sms_stats",
-    password: "Sun.Media@94.6", 
-    port: 5432,
-  });
-
 //  const pool = new Pool({
-//   user: "azman",
-//   host: "localhost",
-//   database: "sms_stats",
-//   password: "", 
-//   port: 5432,
-// });
+//    user: "postgres",
+//    host: "localhost",
+//    database: "sms_stats",
+//    password: "Sun.Media@94.6", 
+//    port: 5432,
+//  });
+
+ const pool = new Pool({
+  user: "azman",
+  host: "localhost",
+  database: "sms_stats",
+  password: "", 
+  port: 5432,
+});
 
 // --- PAGE ROUTES ---
 // Dashboard is now Home
@@ -188,47 +198,62 @@ app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
 app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
   try {
       const result = await pool.query(`
-          WITH CorrectParticipants AS (
-              SELECT 
-                  m.msisdn, 
-                  COUNT(DISTINCT ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1)) as correct_days
-              FROM sms_messages m
-              JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1) = ca.day_number
-              WHERE m.keyword = 'MQ' 
-              AND UPPER(TRIM(m.message_text)) = UPPER(ca.correct_option)
-              AND m.created_at >= '2026-02-18 00:00:00'
-              GROUP BY m.msisdn
-          ),
-          MaxScore AS (
-              SELECT MAX(correct_days) as top_score FROM CorrectParticipants
-          )
-          SELECT cp.msisdn, cp.correct_days
-          FROM CorrectParticipants cp, MaxScore ms
-          WHERE cp.correct_days = ms.top_score
-          ORDER BY cp.msisdn;
+          SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as correct_days
+          FROM sms_logs
+          JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ca.day_number
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'MQ')
+          AND UPPER(TRIM(message_content)) = UPPER(ca.correct_option)
+          AND received_at >= '2026-02-18 00:00:00'
+          GROUP BY msisdn
+          ORDER BY correct_days DESC, msisdn ASC
+          LIMIT 10;
       `);
-      res.json(result.rows);
+      res.json(result.rows || []);
   } catch (err) {
       res.status(500).json({ error: err.message });
   }
 });
 
-// API: Daily Details - Shows unique correct phone numbers for each day
+// API 2: Full Winner List for Export (All tied for 1st place)
+app.get("/api/mq/export-winners", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          WITH ParticipantScores AS (
+              SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as correct_days
+              FROM sms_logs
+              JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ca.day_number
+              WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'MQ')
+              AND UPPER(TRIM(message_content)) = UPPER(ca.correct_option)
+              AND received_at >= '2026-02-18 00:00:00'
+              GROUP BY msisdn
+          )
+          SELECT msisdn FROM ParticipantScores
+          WHERE correct_days = (SELECT MAX(correct_days) FROM ParticipantScores)
+          ORDER BY msisdn ASC;
+      `);
+      res.json(result.rows || []);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+// API: MQ Daily Details
 app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
   try {
       const result = await pool.query(`
           SELECT DISTINCT ON (comp_day, msisdn)
-              (DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1 AS comp_day,
-              m.msisdn
-          FROM sms_messages m
-          JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', m.created_at)::date - '2026-02-18'::date) + 1) = ca.day_number
-          WHERE m.keyword = 'MQ' 
-          AND UPPER(TRIM(m.message_text)) = UPPER(ca.correct_option)
-          AND m.created_at >= '2026-02-18 00:00:00'
+              (DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1 AS comp_day,
+              msisdn
+          FROM sms_logs
+          JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ca.day_number
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'MQ')
+          AND UPPER(TRIM(message_content)) = UPPER(ca.correct_option) -- Target message_content
+          AND received_at >= '2026-02-18 00:00:00'
           ORDER BY comp_day DESC, msisdn ASC;
       `);
-      res.json(result.rows);
+      res.json(result.rows || []);
   } catch (err) {
+      console.error("MQ DAILY DETAILS ERROR:", err.message);
       res.status(500).json({ error: err.message });
   }
 });

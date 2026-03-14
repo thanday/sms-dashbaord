@@ -9,13 +9,21 @@ const { io: clientIo } = require("socket.io-client");
 const socket = clientIo("http://localhost:3007");
 const targetOperator = process.argv[2]; 
 
+// const pool = new Pool({
+//     user: 'postgres',
+//     host: 'localhost',
+//     database: 'sms_stats',
+//     password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js
+//     port: 5432,
+// });
+
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'sms_stats',
-    password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js
+    user: "azman",
+    host: "localhost",
+    database: "sms_stats",
+    password: "", 
     port: 5432,
-});
+  });
 
 const downloadPath = path.resolve(__dirname, 'temp_downloads');
 if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
