@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mee Konrasheh Portal | SSTV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #05020a; color: #94a3b8; }
+        .glass { background: rgba(26, 15, 42, 0.4); backdrop-filter: blur(16px); border: 1px solid rgba(139, 92, 246, 0.1); }
+        .purple-glow { box-shadow: 0 0 40px rgba(139, 92, 246, 0.08); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2e1065; border-radius: 10px; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+            <div>
+                <div class="flex items-center gap-4">
+                    <h1 class="text-5xl font-black text-white tracking-tighter uppercase italic">Mee Konrasheh</h1>
+                    <div id="winnerBadge" class="hidden bg-violet-500/10 border border-violet-500/30 px-4 py-1.5 rounded-full animate-pulse">
+                        <span id="winnerCount" class="text-violet-400 text-[10px] font-black uppercase tracking-widest">0 Winners Tied</span>
+                    </div>
+                </div>
+                <p class="text-violet-400 font-bold text-[10px] uppercase tracking-[0.4em] mt-3">Island Quiz Analytics (Keyword: KR)</p>
+            </div>
+            <button onclick="exportToTxt()" class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-violet-500/20">
+                Export Draw File
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+            <div class="lg:col-span-7">
+                <div class="glass rounded-[2.5rem] overflow-hidden purple-glow h-[600px] flex flex-col">
+                    <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                        <h2 class="text-white text-xs font-black uppercase tracking-widest">🏆 Leaderboard</h2>
+                        <input type="text" id="krSearch" onkeyup="filterTable()" placeholder="Search Number..." class="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] text-white outline-none focus:border-violet-500">
+                    </div>
+                    <div class="flex-grow overflow-y-auto p-4 custom-scrollbar">
+                        <table class="w-full text-left">
+                            <tbody id="krTableBody" class="divide-y divide-white/5"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5">
+                <div class="glass rounded-[2.5rem] h-[600px] flex flex-col">
+                    <div class="p-8 border-b border-white/5 bg-white/[0.02]">
+                        <h2 class="text-white text-xs font-black uppercase tracking-widest">📍 Target Islands</h2>
+                    </div>
+                    <div id="krAnswerGrid" class="grid grid-cols-2 gap-3 p-6 overflow-y-auto custom-scrollbar"></div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-white text-sm font-black uppercase tracking-[0.3em] mb-8 flex items-center gap-4">
+            <span class="h-[1px] w-12 bg-violet-500"></span> Daily Verified Winners
+        </h2>
+        <div id="dailyListContainer" class="space-y-4"></div>
+    </div>
+
+    <script>
+        const krIslands = {
+            1: 'Uligan', 2: 'Foakaidhoo', 3: 'Noomaraa', 4: 'Eydhafushi', 5: 'Gadhdhoo',
+            6: 'Maduvvari', 7: 'Guraidhoo', 8: 'Maaenboodhoo', 9: 'Dhevvadhoo', 10: 'Hithadhoo',
+            11: 'Hoarafushi', 12: 'Kaadedhdhoo', 13: 'Thoddoo', 14: 'Fenfushi', 15: 'Hulhudheli',
+            16: 'Dhanbidhoo', 17: 'Fehendhoo', 18: 'Komandoo', 19: 'Kaashidhoo', 20: 'Feydhoo',
+            21: 'Feeali', 22: 'Gaafaru', 23: 'Dhiyamigili', 24: 'Isdhoo', 25: 'Fuvahmulah',
+            26: 'Kolhufushi', 27: 'Gan', 28: 'Felidhoo', 29: 'Alifushi', 30: 'Dhigurah'
+        };
+
+        async function init() {
+            await Promise.all([loadLeaderboard(), loadDailyList()]);
+            renderAnswerGrid();
+        }
+
+        async function loadLeaderboard() {
+            const res = await fetch('/api/kr/leaderboard');
+            const data = await res.json();
+            const body = document.getElementById('krTableBody');
+            if (!data.length) return body.innerHTML = '<tr><td class="p-12 text-center text-slate-600 italic">No entries found.</td></tr>';
+            
+            const topScore = data[0].correct_days;
+            document.getElementById('winnerBadge').classList.remove('hidden');
+            document.getElementById('winnerCount').innerText = `${data.filter(r => r.correct_days === topScore).length} TIED FOR #1`;
+
+            body.innerHTML = data.map((row, index) => {
+                const isWinner = row.correct_days === topScore;
+                return `
+                    <tr class="group hover:bg-white/[0.01]">
+                        <td class="p-6 px-8 flex items-center gap-6">
+                            <span class="text-2xl font-black ${isWinner ? 'text-violet-400' : 'text-slate-700'} w-8">${isWinner ? 1 : index+1}</span>
+                            <div class="flex flex-col">
+                                <span class="text-white font-bold text-lg tracking-wider">${row.msisdn} ${isWinner ? '👑' : ''}</span>
+                                <span class="text-[9px] text-slate-500 font-black uppercase">Mee Konrasheh Participant</span>
+                            </div>
+                        </td>
+                        <td class="p-6 px-8 text-right">
+                            <span class="text-violet-400 font-black text-xl">${row.correct_days}</span>
+                            <span class="text-[8px] text-slate-600 font-bold uppercase block tracking-tighter">Correct Days</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadDailyList() {
+            const res = await fetch('/api/kr/daily-details');
+            const data = await res.json();
+            const container = document.getElementById('dailyListContainer');
+            if (!data.length) return;
+
+            const grouped = data.reduce((acc, obj) => {
+                if (!acc[obj.comp_day]) acc[obj.comp_day] = [];
+                acc[obj.comp_day].push(obj);
+                return acc;
+            }, {});
+
+            container.innerHTML = Object.keys(grouped).sort((a,b) => b-a).map(day => `
+                <div class="glass rounded-[2rem] overflow-hidden">
+                    <button onclick="toggleDay(${day})" class="w-full p-8 flex justify-between items-center hover:bg-white/[0.02]">
+                        <div class="flex items-center gap-6">
+                            <div class="h-12 w-12 rounded-2xl bg-violet-500/10 flex items-center justify-center border border-violet-500/20 text-violet-400 font-black text-sm">${day}</div>
+                            <div class="text-left"><span class="text-white font-bold text-sm block">Day ${day} Winners</span><span class="text-[9px] text-slate-500 font-black uppercase italic">${krIslands[day]}</span></div>
+                        </div>
+                        <span class="text-violet-400 font-black text-xs uppercase">${grouped[day].length} CORRECT</span>
+                    </button>
+                    <div id="day-content-${day}" class="hidden p-10 pt-2 grid grid-cols-1 md:grid-cols-4 gap-3 bg-black/20 border-t border-white/5">
+                        ${grouped[day].map(row => `<div class="bg-white/5 p-3 rounded-xl border border-white/5"><div class="text-slate-400 font-mono text-[11px]">${row.msisdn}</div><div class="text-[8px] text-violet-500 italic truncate mt-1">"${row.message_content}"</div></div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAnswerGrid() {
+            const grid = document.getElementById('krAnswerGrid');
+            grid.innerHTML = Object.entries(krIslands).map(([day, island]) => `
+                <div class="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col items-center group hover:border-violet-500/30 transition-all text-center">
+                    <span class="text-[9px] font-black text-slate-500 uppercase mb-1 tracking-tighter">Day ${day}</span>
+                    <span class="text-white font-bold text-xs group-hover:text-violet-400">${island}</span>
+                </div>
+            `).join('');
+        }
+
+        function toggleDay(day) { const el = document.getElementById(`day-content-${day}`); if(el) el.classList.toggle('hidden'); }
+        
+        function filterTable() {
+            const input = document.getElementById("krSearch").value.toUpperCase();
+            const rows = document.getElementById("krTableBody").getElementsByTagName("tr");
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = rows[i].textContent.toUpperCase().includes(input) ? "" : "none";
+            }
+        }
+
+        async function exportToTxt() {
+            const res = await fetch('/api/kr/export-winners');
+            const data = await res.json();
+            if(!data.length) return alert("No winners.");
+            const content = data.map(r => r.msisdn).join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `kr_winners_export.txt`;
+            a.click();
+        }
+
+        init();
+    </script>
+</body>
+</html>

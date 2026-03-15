@@ -27,29 +27,37 @@
                 <p class="text-slate-500 mt-2 font-medium italic">Real-time performance analytics</p>
             </div>
             <% 
-            const specialPortals = {
-              '15': { name: 'MQ Portal', url: '/madheena-quiz', desc: 'Madheena Quiz (Keyword: MQ)' },
-              '11': { name: 'Qibla Portal', url: '/qibla-quiz', desc: 'Qibla Quiz (Keyword: QQ)' }
-            };
-            
-            if (specialPortals[programId]) { 
-          %>
-              <div style="background: #0f172a; border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-                  <div style="display: flex; align-items: center; gap: 1.25rem;">
-                      <div style="background: rgba(251, 191, 36, 0.1); width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(251, 191, 36, 0.2);">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
-                              <circle cx="12" cy="10" r="3"></circle>
-                          </svg>
-                      </div>
-                      <div>
-                          <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase;"><%= specialPortals[programId].name %></h4>
-                          <p style="color: #64748b; margin: 2px 0 0 0; font-size: 0.75rem;"><%= specialPortals[programId].desc %></p>
-                      </div>
-                  </div>
-                  <a href="<%= specialPortals[programId].url %>" style="background: #fbbf24; color: black; padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Open Portal</a>
-              </div>
-          <% } %>
+  const specialPortals = {
+    '15': { name: 'MQ Portal', url: '/madheena-quiz', desc: 'Madheena Quiz (Keyword: MQ)', color: '#10b981' },
+    '11': { name: 'Qibla Portal', url: '/qibla-quiz', desc: 'Qibla Quiz (Keyword: QQ)', color: '#fbbf24' },
+    '4': { name: 'KR Portal', url: '/kr-portal', desc: 'Mee Konrasheh (Keyword: KR)', color: '#8b5cf6' }
+  };
+  
+  if (specialPortals[programId]) { 
+    const portal = specialPortals[programId];
+    const isGold = portal.color === '#fbbf24';
+%>
+    <div style="background-color: #0f172a; border: 1px solid <%= portal.color %>; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+        
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <div style="background-color: rgba(255,255,255,0.05); width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="<%= portal.color %>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+            </div>
+
+            <div>
+                <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase;"><%= portal.name %></h4>
+                <p style="color: #64748b; margin: 2px 0 0 0; font-size: 0.75rem;"><%= portal.desc %></p>
+            </div>
+        </div>
+
+        <a href="<%= portal.url %>" style="background-color: <%= portal.color %>; color: <%= isGold ? 'black' : 'white' %>; padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; display: inline-block;">
+            Open Portal
+        </a>
+    </div>
+<% } %>
 
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center min-w-[220px] shadow-2xl">
                 <span id="grandTotal" class="text-5xl font-black text-white block tracking-tighter">0</span>

@@ -134,6 +134,9 @@ app.get("/hadhiyaa-badhiyaa", isAdmin, (req, res) => {
   });
 });
 
+app.get("/kr-portal", isAdmin, (req, res) => { 
+  res.render("kr-portal"); 
+});
 
 app.get("/qibla-quiz", isAdmin, (req, res) => {
   res.render("qibla-quiz", { role: req.session.role });
@@ -202,6 +205,55 @@ app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
 });
 
 // API: Leaderboard - Calculates who has the most correct answers across 30 days
+const KR_QUERY = `
+    WITH ParticipantScores AS (
+        SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as hits
+        FROM sms_logs
+        JOIN kr_answers ka ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ka.day_number
+        WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'KR' LIMIT 1) 
+        AND message_content ILIKE '%' || ka.island_name || '%'
+        AND received_at >= '2026-02-18 00:00:00'
+        GROUP BY msisdn
+    )
+`;
+
+app.get("/api/kr/leaderboard", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`${KR_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/kr/export-winners", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`${KR_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/kr/daily-details", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT 
+              msisdn, 
+              message_content,
+              ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) as comp_day
+          FROM sms_logs
+          JOIN kr_answers ka ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ka.day_number
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'KR' LIMIT 1) 
+          AND message_content ILIKE '%' || ka.island_name || '%'
+          AND received_at >= '2026-02-18 00:00:00'
+          GROUP BY msisdn, comp_day, message_content
+          ORDER BY comp_day DESC, msisdn ASC;
+      `);
+      
+      res.json(result.rows || []);
+  } catch (err) {
+      console.error("KR Daily Details Error:", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Qibla Quiz Leaderboard (Top 10 display)
 // This works on both Mac and Ubuntu regardless of the ID number
