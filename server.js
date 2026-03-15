@@ -66,21 +66,21 @@ app.post("/login", (req, res) => {
   }
 });
 
-  const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    database: "sms_stats",
-    password: "Sun.Media@94.6", 
-    port: 5432,
-  });
+   const pool = new Pool({
+     user: "postgres",
+     host: "localhost",
+     database: "sms_stats",
+     password: "Sun.Media@94.6", 
+     port: 5432,
+   });
 
-//  const pool = new Pool({
-//   user: "azman",
-//   host: "localhost",
-//   database: "sms_stats",
-//   password: "", 
-//   port: 5432,
-// });
+//   const pool = new Pool({
+//    user: "azman",
+//    host: "localhost",
+//    database: "sms_stats",
+//    password: "", 
+//    port: 5432,
+//  });
 
 // --- PAGE ROUTES ---
 // Dashboard is now Home
@@ -133,6 +133,13 @@ app.get("/hadhiyaa-badhiyaa", isAdmin, (req, res) => {
       role: req.session.role 
   });
 });
+
+
+app.get("/qibla-quiz", isAdmin, (req, res) => {
+  res.render("qibla-quiz", { role: req.session.role });
+});
+
+
 
 // API: Check if phone exists
 app.get("/api/gifts/check/:phone", isAdmin, async (req, res) => {
@@ -195,6 +202,60 @@ app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
 });
 
 // API: Leaderboard - Calculates who has the most correct answers across 30 days
+
+// Qibla Quiz Leaderboard (Top 10 display)
+// This works on both Mac and Ubuntu regardless of the ID number
+const QIBLA_QUERY = `
+    WITH ParticipantScores AS (
+        SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as hits
+        FROM sms_logs
+        JOIN qibla_answers qa ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = qa.day_number
+        WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'QQ' LIMIT 1) 
+        AND UPPER(TRIM(message_content)) = UPPER(qa.correct_option)
+        AND received_at >= '2026-02-18 00:00:00'
+        GROUP BY msisdn
+    )
+`;
+
+app.get("/api/qibla/leaderboard", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`${QIBLA_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`);
+      res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/qibla/export-winners", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`${QIBLA_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`);
+      res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get("/api/qibla/daily-details", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT 
+              msisdn, 
+              ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) as comp_day
+          FROM sms_logs
+          JOIN qibla_answers qa ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = qa.day_number
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'QQ' LIMIT 1) 
+          AND UPPER(TRIM(message_content)) = UPPER(qa.correct_option)
+          AND received_at >= '2026-02-18 00:00:00'
+          GROUP BY msisdn, comp_day
+          ORDER BY comp_day DESC, msisdn ASC;
+      `);
+      
+      console.log(`Daily details found ${result.rows.length} records.`);
+      res.json(result.rows || []);
+  } catch (err) {
+      console.error("Qibla Daily Details Error:", err);
+      res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
   try {
       const result = await pool.query(`
