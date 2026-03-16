@@ -12,70 +12,102 @@
         .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .gift-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .gift-card:hover { transform: translateY(-10px); border-color: rgba(236, 72, 153, 0.3); background: rgba(236, 72, 153, 0.03); }
+        .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; display: flex; }
     </style>
 </head>
 <body class="p-6 md:p-12">
     <div class="max-w-7xl mx-auto">
         
-        <div class="flex justify-between items-end mb-16">
+        <div class="flex justify-between items-end mb-12">
             <div>
                 <h1 class="text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Hadhiyaa <span class="text-pink-500">Badhiyaa</span></h1>
                 <p class="text-slate-500 font-bold text-[10px] uppercase tracking-[0.5em] mt-4 flex items-center gap-3">
                     <span class="w-12 h-[1px] bg-pink-500"></span> Eid Giveaway (Keyword: HB)
                 </p>
             </div>
-            <div class="hidden md:block text-right">
-                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Last Data Sync</span>
-                <span class="text-white font-bold text-sm" id="syncTime">Manual Refresh Required</span>
+            <div class="text-right">
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Manual Data Sync</span>
+                <span class="text-white font-bold text-sm" id="syncTime">--:--:--</span>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div class="glass gift-card rounded-[3rem] p-10 flex flex-col items-center text-center">
-                <div class="w-20 h-20 bg-pink-500/10 rounded-3xl flex items-center justify-center mb-8 border border-pink-500/20">
-                    <span class="text-3xl">✨</span>
-                </div>
-                <h3 class="text-white font-black text-2xl uppercase tracking-tighter">ESSENZA</h3>
-                <p class="text-pink-500 text-[10px] font-black uppercase tracking-widest mb-8">Perfume Pack</p>
-                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-essenza">0</div>
-                <button onclick="exportHB('essenza')" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all">Export Draw</button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div class="glass gift-card rounded-[3rem] p-8 text-center border-pink-500/10">
+                <span class="text-3xl block mb-4">✨</span>
+                <h3 class="text-white font-black text-xl uppercase italic">ESSENZA</h3>
+                <p class="text-pink-500 text-[9px] font-black uppercase tracking-widest mb-4">Perfume Pack</p>
+                <div class="text-5xl font-black text-white mb-6" id="count-essenza">0</div>
+                <button onclick="exportHB('essenza')" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Export Draw</button>
             </div>
+            <div class="glass gift-card rounded-[3rem] p-8 text-center border-blue-500/10">
+                <span class="text-3xl block mb-4">🚲</span>
+                <h3 class="text-white font-black text-xl uppercase italic">Skip n Smile</h3>
+                <p class="text-blue-400 text-[9px] font-black uppercase tracking-widest mb-4">Bicycle Pack</p>
+                <div class="text-5xl font-black text-white mb-6" id="count-skip">0</div>
+                <button onclick="exportHB('skip')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Export Draw</button>
+            </div>
+            <div class="glass gift-card rounded-[3rem] p-8 text-center border-amber-500/10">
+                <span class="text-3xl block mb-4">🎣</span>
+                <h3 class="text-white font-black text-xl uppercase italic">BK</h3>
+                <p class="text-amber-500 text-[9px] font-black uppercase tracking-widest mb-4">Fishing Rod Pack</p>
+                <div class="text-5xl font-black text-white mb-6" id="count-bk">0</div>
+                <button onclick="exportHB('bk')" class="w-full bg-amber-600 hover:bg-amber-500 text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Export Draw</button>
+            </div>
+        </div>
 
-            <div class="glass gift-card rounded-[3rem] p-10 flex flex-col items-center text-center">
-                <div class="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-8 border border-blue-500/20">
-                    <span class="text-3xl">🚲</span>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="glass p-6 rounded-3xl">
+                <span class="text-[9px] font-black text-slate-500 uppercase block mb-4">Essenza Split</span>
+                <div class="flex justify-between mb-2 font-mono">
+                    <span id="total-ess-d" class="text-xl font-black text-[#f97316]">0</span>
+                    <span id="total-ess-o" class="text-xl font-black text-[#ef4444]">0</span>
                 </div>
-                <h3 class="text-white font-black text-2xl uppercase tracking-tighter">Skip n Smile</h3>
-                <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-8">Bicycle Pack</p>
-                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-skip">0</div>
-                <button onclick="exportHB('skip')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all">Export Draw</button>
+                <div class="progress-container">
+                    <div id="bar-ess-d" class="bg-[#f97316] transition-all duration-1000" style="width: 50%"></div>
+                    <div id="bar-ess-o" class="bg-[#ef4444] transition-all duration-1000" style="width: 50%"></div>
+                </div>
             </div>
+            <div class="glass p-6 rounded-3xl">
+                <span class="text-[9px] font-black text-slate-500 uppercase block mb-4">Skip n Smile Split</span>
+                <div class="flex justify-between mb-2 font-mono">
+                    <span id="total-skip-d" class="text-xl font-black text-[#f97316]">0</span>
+                    <span id="total-skip-o" class="text-xl font-black text-[#ef4444]">0</span>
+                </div>
+                <div class="progress-container">
+                    <div id="bar-skip-d" class="bg-[#f97316] transition-all duration-1000" style="width: 50%"></div>
+                    <div id="bar-skip-o" class="bg-[#ef4444] transition-all duration-1000" style="width: 50%"></div>
+                </div>
+            </div>
+            <div class="glass p-6 rounded-3xl">
+                <span class="text-[9px] font-black text-slate-500 uppercase block mb-4">BK Split</span>
+                <div class="flex justify-between mb-2 font-mono">
+                    <span id="total-bk-d" class="text-xl font-black text-[#f97316]">0</span>
+                    <span id="total-bk-o" class="text-xl font-black text-[#ef4444]">0</span>
+                </div>
+                <div class="progress-container">
+                    <div id="bar-bk-d" class="bg-[#f97316] transition-all duration-1000" style="width: 50%"></div>
+                    <div id="bar-bk-o" class="bg-[#ef4444] transition-all duration-1000" style="width: 50%"></div>
+                </div>
+            </div>
+        </div>
 
-            <div class="glass gift-card rounded-[3rem] p-10 flex flex-col items-center text-center">
-                <div class="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-8 border border-amber-500/20">
-                    <span class="text-3xl">🎣</span>
-                </div>
-                <h3 class="text-white font-black text-2xl uppercase tracking-tighter">BK</h3>
-                <p class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-8">Fishing Rod Pack</p>
-                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-bk">0</div>
-                <button onclick="exportHB('bk')" class="w-full bg-amber-600 hover:bg-amber-500 text-black py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all">Export Draw</button>
-            </div>
+        <div class="glass rounded-[3rem] p-10 mb-12">
+            <h2 class="text-white text-lg font-black uppercase italic mb-8">Daily Participation Volume</h2>
+            <div class="h-[300px] w-full"><canvas id="hbDailyChart"></canvas></div>
         </div>
 
         <div class="glass rounded-[3rem] p-10">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-                <div>
-                    <h2 class="text-white text-lg font-black uppercase tracking-tighter italic">Daily Trends</h2>
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Participation volume by category</p>
-                </div>
-                <div class="flex gap-6">
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-pink-500"></span><span class="text-[9px] text-slate-400 font-black uppercase">Essenza</span></div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span><span class="text-[9px] text-slate-400 font-black uppercase">Skip n Smile</span></div>
-                    <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span><span class="text-[9px] text-slate-400 font-black uppercase">BK</span></div>
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-white text-lg font-black uppercase italic">Network Distribution (Dhiraagu vs Ooredoo)</h2>
+                <div class="flex gap-4">
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#f97316]"></span><span class="text-[9px] text-slate-400 font-bold tracking-widest uppercase">DHIRAAGU</span></div>
+                    <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#ef4444]"></span><span class="text-[9px] text-slate-400 font-bold tracking-widest uppercase">OOREDOO</span></div>
                 </div>
             </div>
-            <div class="h-[350px] w-full">
-                <canvas id="hbDailyChart"></canvas>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12 text-center">
+                <div><span class="text-[10px] font-black text-slate-500 uppercase mb-4 block tracking-widest">Essenza</span><div class="h-[250px]"><canvas id="chartEssenzaOp"></canvas></div></div>
+                <div><span class="text-[10px] font-black text-slate-500 uppercase mb-4 block tracking-widest">Skip n Smile</span><div class="h-[250px]"><canvas id="chartSkipOp"></canvas></div></div>
+                <div><span class="text-[10px] font-black text-slate-500 uppercase mb-4 block tracking-widest">BK</span><div class="h-[250px]"><canvas id="chartBkOp"></canvas></div></div>
             </div>
         </div>
 
@@ -84,78 +116,83 @@
     <script>
         async function loadHBPortal() {
             try {
-                // 1. Fetch Summary Stats
+                // Fetch Main Summary
                 const statsRes = await fetch('/api/hb/stats');
                 const stats = await statsRes.json();
-                document.getElementById('count-essenza').innerText = stats.essenza_count;
-                document.getElementById('count-skip').innerText = stats.skip_count;
-                document.getElementById('count-bk').innerText = stats.bk_count;
+                document.getElementById('count-essenza').innerText = stats.essenza_count.toLocaleString();
+                document.getElementById('count-skip').innerText = stats.skip_count.toLocaleString();
+                document.getElementById('count-bk').innerText = stats.bk_count.toLocaleString();
                 document.getElementById('syncTime').innerText = new Date().toLocaleTimeString();
 
-                // 2. Fetch Chart Data
-                const chartRes = await fetch('/api/hb/chart-data');
-                const chartData = await chartRes.json();
-                renderChart(chartData);
+                // Fetch Operator Totals & Update Progress Bars
+                const totalsRes = await fetch('/api/hb/operator-totals');
+                const totals = await totalsRes.json();
+                updateTotals('ess', totals.essenza_dhiraagu, totals.essenza_ooredoo);
+                updateTotals('skip', totals.skip_dhiraagu, totals.skip_ooredoo);
+                updateTotals('bk', totals.bk_dhiraagu, totals.bk_ooredoo);
+
+                // Fetch Daily Line Trend
+                const trendRes = await fetch('/api/hb/chart-data');
+                const trendData = await trendRes.json();
+                renderTrendChart(trendData);
+
+                // Fetch Operator Breakdown Bars
+                const opRes = await fetch('/api/hb/operator-breakdown');
+                const opData = await opRes.json();
+                renderOpChart('chartEssenzaOp', opData, 'essenza_dhiraagu', 'essenza_ooredoo');
+                renderOpChart('chartSkipOp', opData, 'skip_dhiraagu', 'skip_ooredoo');
+                renderOpChart('chartBkOp', opData, 'bk_dhiraagu', 'bk_ooredoo');
+
             } catch (err) { console.error("Error loading HB Portal:", err); }
         }
 
-        function renderChart(data) {
-            const ctx = document.getElementById('hbDailyChart').getContext('2d');
-            new Chart(ctx, {
+        function updateTotals(prefix, dVal, oVal) {
+            document.getElementById(`total-${prefix}-d`).innerText = dVal.toLocaleString();
+            document.getElementById(`total-${prefix}-o`).innerText = oVal.toLocaleString();
+            
+            const total = dVal + oVal;
+            if (total > 0) {
+                const dPer = (dVal / total) * 100;
+                const oPer = (oVal / total) * 100;
+                document.getElementById(`bar-${prefix}-d`).style.width = dPer + '%';
+                document.getElementById(`bar-${prefix}-o`).style.width = oPer + '%';
+            }
+        }
+
+        function renderTrendChart(data) {
+            new Chart(document.getElementById('hbDailyChart').getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: data.map(d => new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })),
                     datasets: [
-                        {
-                            label: 'Essenza',
-                            data: data.map(d => d.essenza),
-                            borderColor: '#ec4899',
-                            backgroundColor: 'rgba(236, 72, 153, 0.05)',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#ec4899'
-                        },
-                        {
-                            label: 'Skip n Smile',
-                            data: data.map(d => d.skip),
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#3b82f6'
-                        },
-                        {
-                            label: 'BK',
-                            data: data.map(d => d.bk),
-                            borderColor: '#fbbf24',
-                            backgroundColor: 'rgba(251, 191, 36, 0.05)',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 4,
-                            pointBackgroundColor: '#fbbf24'
-                        }
+                        { label: 'Essenza', data: data.map(d => d.essenza), borderColor: '#ec4899', tension: 0.4, borderWidth: 3 },
+                        { label: 'Skip', data: data.map(d => d.skip), borderColor: '#3b82f6', tension: 0.4, borderWidth: 3 },
+                        { label: 'BK', data: data.map(d => d.bk), borderColor: '#fbbf24', tension: 0.4, borderWidth: 3 }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { 
-                            beginAtZero: true,
-                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
-                            ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } }
-                        }
-                    }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+            });
+        }
+
+        function renderOpChart(id, data, dKey, oKey) {
+            const displayData = [...data].reverse();
+            new Chart(document.getElementById(id).getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: displayData.map(d => new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit' })),
+                    datasets: [
+                        { label: 'Dhiraagu', data: displayData.map(d => d[dKey]), backgroundColor: '#f97316', stack: 's1' },
+                        { label: 'Ooredoo', data: displayData.map(d => d[oKey]), backgroundColor: '#ef4444', stack: 's1' }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b' } }, 
+                        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } } 
+                    } 
                 }
             });
         }
@@ -163,17 +200,14 @@
         async function exportHB(cat) {
             const res = await fetch(`/api/hb/export/${cat}`);
             const data = await res.json();
-            if(!data.length) return alert("No entries found.");
-            
             const content = data.map(r => r.msisdn).join('\n');
             const blob = new Blob([content], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `hb_${cat}_draw_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `hb_${cat}_draw_pool.txt`;
             a.click();
         }
 
-        // Run once on load
         loadHBPortal();
     </script>
 </body>

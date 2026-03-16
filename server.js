@@ -68,21 +68,21 @@ app.post("/login", (req, res) => {
   }
 });
 
- const pool = new Pool({
-   user: "postgres",
-   host: "localhost",
-   database: "sms_stats",
-   password: "Sun.Media@94.6",
-   port: 5432,
- });
+  const pool = new Pool({
+    user: "postgres",
+    host: "localhost",
+    database: "sms_stats",
+    password: "Sun.Media@94.6",
+    port: 5432,
+  });
 
-  //  const pool = new Pool({
-  //   user: "azman",
-  //   host: "localhost",
-  //   database: "sms_stats",
-  //   password: "",
-  //   port: 5432,
-  // });
+  //   const pool = new Pool({
+  //    user: "azman",
+  //    host: "localhost",
+  //    database: "sms_stats",
+  //    password: "",
+  //    port: 5432,
+  //  });
 
 // --- PAGE ROUTES ---
 // Dashboard is now Home
@@ -256,6 +256,55 @@ app.get("/api/hb/export/:category", isAdmin, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/hb/operator-breakdown", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT 
+              (DATE_TRUNC('day', received_at)::date) as date,
+              -- ESSENZA
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as essenza_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as essenza_ooredoo,
+              -- SKIP N SMILE
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as skip_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as skip_ooredoo,
+              -- BK
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as bk_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as bk_ooredoo
+          FROM sms_logs
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
+          AND received_at >= '2026-02-18 00:00:00'
+          GROUP BY date
+          ORDER BY date DESC;
+      `);
+      res.json(result.rows);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/hb/operator-totals", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT 
+              -- ESSENZA
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as essenza_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as essenza_ooredoo,
+              -- SKIP N SMILE
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as skip_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as skip_ooredoo,
+              -- BK
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as bk_dhiraagu,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as bk_ooredoo
+          FROM sms_logs
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
+          AND received_at >= '2026-02-18 00:00:00';
+      `);
+      res.json(result.rows[0]);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
   }
 });
 
