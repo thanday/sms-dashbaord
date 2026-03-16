@@ -211,6 +211,26 @@ app.get("/api/hb/stats", isAdmin, async (req, res) => {
   }
 });
 
+app.get("/api/hb/chart-data", isAdmin, async (req, res) => {
+  try {
+      const result = await pool.query(`
+          SELECT 
+              (DATE_TRUNC('day', received_at)::date) as date,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%') as essenza,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%') as skip,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%') as bk
+          FROM sms_logs
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
+          AND received_at >= '2026-02-18 00:00:00'
+          GROUP BY date
+          ORDER BY date ASC;
+      `);
+      res.json(result.rows);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
 // 2. Export Numbers for a Specific Category (Includes Duplicates)
 app.get("/api/hb/export/:category", isAdmin, async (req, res) => {
   const { category } = req.params;
