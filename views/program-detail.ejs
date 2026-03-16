@@ -1,144 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title><%= programName %> | Analytics Detail</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-        .chart-card-content { display: flex; flex-direction: column; justify-content: space-between; }
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #1e293b;
+        border-radius: 10px;
+      }
+      .chart-card-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
     </style>
-</head>
-<body class="bg-[#050810] text-slate-400 min-h-screen p-6 md:p-12">
-
+  </head>
+  <body class="bg-[#050810] text-slate-400 min-h-screen p-6 md:p-12">
     <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-            <div>
-                <a href="/dashboard/all" class="text-blue-500 hover:text-blue-400 text-sm font-bold flex items-center gap-2 mb-2 transition-all">
-                    ← Back to Global Dashboard
-                </a>
-                <h1 class="text-5xl font-black text-white tracking-tighter uppercase"><%= programName %></h1>
-                <p class="text-slate-500 mt-2 font-medium italic">Real-time performance analytics</p>
-            </div>
-            <% 
-  const specialPortals = {
-    '15': { name: 'MQ Portal', url: '/madheena-quiz', desc: 'Madheena Quiz (Keyword: MQ)', color: '#10b981' },
-    '11': { name: 'Qibla Portal', url: '/qibla-quiz', desc: 'Qibla Quiz (Keyword: QQ)', color: '#fbbf24' },
-    '4': { name: 'KR Portal', url: '/kr-portal', desc: 'Mee Konrasheh (Keyword: KR)', color: '#8b5cf6' }
-  };
-  
-  if (specialPortals[programId]) { 
-    const portal = specialPortals[programId];
-    const isGold = portal.color === '#fbbf24';
-%>
-    <div style="background-color: #0f172a; border: 1px solid <%= portal.color %>; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-        
-        <div style="display: flex; align-items: center; gap: 1.25rem;">
-            <div style="background-color: rgba(255,255,255,0.05); width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="<%= portal.color %>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-            </div>
-
-            <div>
-                <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase;"><%= portal.name %></h4>
-                <p style="color: #64748b; margin: 2px 0 0 0; font-size: 0.75rem;"><%= portal.desc %></p>
-            </div>
-        </div>
-
-        <a href="<%= portal.url %>" style="background-color: <%= portal.color %>; color: <%= isGold ? 'black' : 'white' %>; padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; display: inline-block;">
-            Open Portal
-        </a>
-    </div>
-<% } %>
-
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center min-w-[220px] shadow-2xl">
-                <span id="grandTotal" class="text-5xl font-black text-white block tracking-tighter">0</span>
-                <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 block">Total Program SMS</span>
-            </div>
-        </div>
-
-        <div class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] mb-12 backdrop-blur-sm shadow-xl">
-            <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Hourly Engagement Heatmap</h3>
-            <div id="heatmapChart" class="min-h-[380px] w-full"></div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <div class="lg:col-span-2 bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm flex flex-col chart-card-content">
-                <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Keyword Distribution</h3>
-                <div id="keywordBarChart" class="w-full mt-auto" style="min-height: 420px;"></div>
-            </div>
-
-            <div class="space-y-8">
-                <div class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] flex flex-col items-center justify-center backdrop-blur-sm">
-                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-8 text-center">SMS Share</h3>
-                    <div id="operatorDonut"></div>
-                    <div class="flex gap-8 mt-8 w-full px-4 text-center">
-                        <div class="flex-1">
-                            <p id="count-ooredoo" class="text-3xl font-black text-rose-500">0</p>
-                            <p class="text-[10px] uppercase font-bold text-slate-600">Ooredoo</p>
-                        </div>
-                        <div class="flex-1 border-l border-slate-800">
-                            <p id="count-dhiraagu" class="text-3xl font-black text-[#FC7022]">0</p>
-                            <p class="text-[10px] uppercase font-bold text-slate-600">Dhiraagu</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900/40 border border-slate-800 p-6 rounded-[2.5rem] backdrop-blur-sm">
-                    <h3 class="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-4 text-center">Top Participants</h3>
-                    <div id="leaderboardList" class="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-slate-900/40 border border-slate-800 p-10 rounded-[2.5rem] backdrop-blur-sm">
-            <h3 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-10 text-center uppercase">Daily Traffic Trend</h3>
-            <div id="dailyTrendLineChart"></div>
-        </div>
-
-<% if (programName === "Komme Gadiyaku Inaameh") { %>
-    <div class="mt-12 bg-slate-900/60 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+      <div
+        class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4"
+      >
         <div>
-            <p class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1">
-                Last Data Sync: <span id="lastSyncTime" class="text-white">Loading...</span>
-            </p>
-            <h3 class="text-lg font-black text-white uppercase tracking-tight">Export Numbers For Draw</h3>
-            <p class="text-sm text-slate-500">Downloads 12 individual .txt files filtered by keyword and "SSTV".</p>
+          <a
+            href="/dashboard/all"
+            class="text-blue-500 hover:text-blue-400 text-sm font-bold flex items-center gap-2 mb-2 transition-all"
+          >
+            ← Back to Global Dashboard
+          </a>
+          <h1 class="text-5xl font-black text-white tracking-tighter uppercase">
+            <%= programName %>
+          </h1>
+          <p class="text-slate-500 mt-2 font-medium italic">
+            Real-time performance analytics
+          </p>
         </div>
+        <% 
+        const specialPortals = {
+          '15': { name: 'MQ Portal', url: '/madheena-quiz', desc: 'Madheena Quiz (Keyword: MQ)', color: '#10b981' },
+          '11': { name: 'Qibla Portal', url: '/qibla-quiz', desc: 'Qibla Quiz (Keyword: QQ)', color: '#fbbf24' },
+          '4': { name: 'KR Portal', url: '/kr-portal', desc: 'Mee Konrasheh (Keyword: KR)', color: '#8b5cf6' },
+          '2': { name: 'HB Portal', url: '/hb-portal', desc: 'Hadhiyaa Badhiyaa (Keyword: HB)', color: '#ec4899' }
+        };
         
+        if (specialPortals[programId]) { 
+          const portal = specialPortals[programId];
+          const isGold = portal.color === '#fbbf24';
+      %>
+          <div style="background-color: #0f172a; border: 1px solid <%= portal.color %>; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);">
+              <div style="display: flex; align-items: center; gap: 1.25rem;">
+                  <div style="background-color: rgba(255,255,255,0.03); width: 48px; height: 48px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1);">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="<%= portal.color %>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
+                          <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                  </div>
+                  <div>
+                      <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: 800; text-transform: uppercase;"><%= portal.name %></h4>
+                      <p style="color: #64748b; margin: 2px 0 0 0; font-size: 0.75rem;"><%= portal.desc %></p>
+                  </div>
+              </div>
+              <a href="<%= portal.url %>" style="background-color: <%= portal.color %>; color: <%= isGold ? 'black' : 'white' %>; padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; display: inline-block;">
+                  Open Portal
+              </a>
+          </div>
+      <% } %>
+
+        <div
+          class="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center min-w-[220px] shadow-2xl"
+        >
+          <span
+            id="grandTotal"
+            class="text-5xl font-black text-white block tracking-tighter"
+            >0</span
+          >
+          <span
+            class="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 block"
+            >Total Program SMS</span
+          >
+        </div>
+      </div>
+
+      <div
+        class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] mb-12 backdrop-blur-sm shadow-xl"
+      >
+        <h3
+          class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4"
+        >
+          Hourly Engagement Heatmap
+        </h3>
+        <div id="heatmapChart" class="min-h-[380px] w-full"></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div
+          class="lg:col-span-2 bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm flex flex-col chart-card-content"
+        >
+          <h3
+            class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-2"
+          >
+            Keyword Distribution
+          </h3>
+          <div
+            id="keywordBarChart"
+            class="w-full mt-auto"
+            style="min-height: 420px"
+          ></div>
+        </div>
+
+        <div class="space-y-8">
+          <div
+            class="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] flex flex-col items-center justify-center backdrop-blur-sm"
+          >
+            <h3
+              class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-8 text-center"
+            >
+              SMS Share
+            </h3>
+            <div id="operatorDonut"></div>
+            <div class="flex gap-8 mt-8 w-full px-4 text-center">
+              <div class="flex-1">
+                <p id="count-ooredoo" class="text-3xl font-black text-rose-500">
+                  0
+                </p>
+                <p class="text-[10px] uppercase font-bold text-slate-600">
+                  Ooredoo
+                </p>
+              </div>
+              <div class="flex-1 border-l border-slate-800">
+                <p
+                  id="count-dhiraagu"
+                  class="text-3xl font-black text-[#FC7022]"
+                >
+                  0
+                </p>
+                <p class="text-[10px] uppercase font-bold text-slate-600">
+                  Dhiraagu
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="bg-slate-900/40 border border-slate-800 p-6 rounded-[2.5rem] backdrop-blur-sm"
+          >
+            <h3
+              class="text-xs font-black text-blue-400 uppercase tracking-[0.2em] mb-4 text-center"
+            >
+              Top Participants
+            </h3>
+            <div
+              id="leaderboardList"
+              class="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="bg-slate-900/40 border border-slate-800 p-10 rounded-[2.5rem] backdrop-blur-sm"
+      >
+        <h3
+          class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-10 text-center uppercase"
+        >
+          Daily Traffic Trend
+        </h3>
+        <div id="dailyTrendLineChart"></div>
+      </div>
+
+      <% if (programName === "Komme Gadiyaku Inaameh") { %>
+      <div
+        class="mt-12 bg-slate-900/60 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6"
+      >
+        <div>
+          <p
+            class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1"
+          >
+            Last Data Sync:
+            <span id="lastSyncTime" class="text-white">Loading...</span>
+          </p>
+          <h3 class="text-lg font-black text-white uppercase tracking-tight">
+            Export Numbers For Draw
+          </h3>
+          <p class="text-sm text-slate-500">
+            Downloads 12 individual .txt files filtered by keyword and "SSTV".
+          </p>
+        </div>
+
         <div class="flex items-center gap-4">
-            <input type="date" id="downloadDate" 
-                   class="bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 transition-all">
-            
-            <button onclick="downloadInaamehZip()" 
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-                Download ZIP
-            </button>
+          <input
+            type="date"
+            id="downloadDate"
+            class="bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 transition-all"
+          />
+
+          <button
+            onclick="downloadInaamehZip()"
+            class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Download ZIP
+          </button>
         </div>
         <div class="flex gap-4">
-            <a href="/dashboard/program/<%= programId %>/draw" 
-               class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg">
-                Open Live Draw
-            </a>
-            
-            <a href="/dashboard/winners" 
-               class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
-                View Winners Gallery
-            </a>
+          <a
+            href="/dashboard/program/<%= programId %>/draw"
+            class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg"
+          >
+            Open Live Draw
+          </a>
+
+          <a
+            href="/dashboard/winners"
+            class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all"
+          >
+            View Winners Gallery
+          </a>
         </div>
-    </div>
-<% } %>
+      </div>
+      <% } %>
     </div>
 
     <script>
@@ -147,180 +253,328 @@
       const socket = io();
       let heatmapChart, barChart, donutChart, trendChart;
 
-      const promoOrder = ['AA', 'BB', 'CC', 'DD', 'EE', 'FF', 'GG', 'HH', 'JJ', 'KK', 'LL', 'MM'];
+      const promoOrder = [
+        "AA",
+        "BB",
+        "CC",
+        "DD",
+        "EE",
+        "FF",
+        "GG",
+        "HH",
+        "JJ",
+        "KK",
+        "LL",
+        "MM",
+      ];
 
       function downloadInaamehZip() {
-        const dateInput = document.getElementById('downloadDate').value;
+        const dateInput = document.getElementById("downloadDate").value;
         let targetDate = dateInput;
         if (!targetDate) {
-            const now = new Date();
-            if (now.getHours() < 2) now.setDate(now.getDate() - 1);
-            targetDate = now.toISOString().split('T')[0];
+          const now = new Date();
+          if (now.getHours() < 2) now.setDate(now.getDate() - 1);
+          targetDate = now.toISOString().split("T")[0];
         }
         if (currentProgramName !== "Komme Gadiyaku Inaameh") {
-            alert("This download is specifically for the 'Komme Gadiyaku Inaameh' program.");
-            return;
+          alert(
+            "This download is specifically for the 'Komme Gadiyaku Inaameh' program."
+          );
+          return;
         }
         window.location.href = `/api/download-inaameh-zip?programId=${programId}&date=${targetDate}`;
       }
 
-      window.addEventListener('DOMContentLoaded', () => {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('downloadDate').value = today;
+      window.addEventListener("DOMContentLoaded", () => {
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("downloadDate").value = today;
       });
 
       async function refreshDetail() {
-    try {
-        const [statRes, trendRes, heatRes, spenderRes, syncRes] = await Promise.all([
-            fetch(`/api/stats/${programId}`),
-            fetch(`/api/daily-stats/${programId}`),
-            fetch(`/api/heatmap/${programId}`),
-            fetch(`/api/top-spenders/${programId}`),
-            fetch(`/api/last-sync`)
-        ]);
+        try {
+          const [statRes, trendRes, heatRes, spenderRes, syncRes] =
+            await Promise.all([
+              fetch(`/api/stats/${programId}`),
+              fetch(`/api/daily-stats/${programId}`),
+              fetch(`/api/heatmap/${programId}`),
+              fetch(`/api/top-spenders/${programId}`),
+              fetch(`/api/last-sync`),
+            ]);
 
-        const statsRaw = await statRes.json();
-        const trendData = await trendRes.json();
-        const heatmapRaw = await heatRes.json();
-        const topSpenders = await spenderRes.json();
-        const syncData = await syncRes.json();
+          const statsRaw = await statRes.json();
+          const trendData = await trendRes.json();
+          const heatmapRaw = await heatRes.json();
+          const topSpenders = await spenderRes.json();
+          const syncData = await syncRes.json();
 
-        // Update Last Sync UI (with safety check for other programs)
-        const syncElement = document.getElementById("lastSyncTime");
-        if (syncElement && syncData && syncData.last_sync) {
+          // Update Last Sync UI (with safety check for other programs)
+          const syncElement = document.getElementById("lastSyncTime");
+          if (syncElement && syncData && syncData.last_sync) {
             const date = new Date(syncData.last_sync);
-            syncElement.innerText = date.toLocaleString('en-GB', {
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            syncElement.innerText = date.toLocaleString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
             });
-        }
+          }
 
-        // IMPROVED SORTING LOGIC
-        let stats;
-        if (currentProgramName === "Komme Gadiyaku Inaameh") {
-            stats = statsRaw.sort((a, b) => promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword));
-        } else {
+          // IMPROVED SORTING LOGIC
+          let stats;
+          if (currentProgramName === "Komme Gadiyaku Inaameh") {
+            stats = statsRaw.sort(
+              (a, b) =>
+                promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword)
+            );
+          } else {
             // Sort by message count (descending) for all other programs like Qibla Quiz
-            stats = statsRaw.sort((a, b) => parseInt(b.count) - parseInt(a.count));
-        }
+            stats = statsRaw.sort(
+              (a, b) => parseInt(b.count) - parseInt(a.count)
+            );
+          }
 
-        // If no data, exit early to prevent chart crashes
-        if (!stats || stats.length === 0) return;
+          // If no data, exit early to prevent chart crashes
+          if (!stats || stats.length === 0) return;
 
-        // Update Totals
-        document.getElementById("grandTotal").innerText = stats.reduce((a, b) => a + parseInt(b.count || 0), 0).toLocaleString();
-        document.getElementById("count-ooredoo").innerText = stats.reduce((a, b) => a + parseInt(b.ooredoo || 0), 0).toLocaleString();
-        document.getElementById("count-dhiraagu").innerText = stats.reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0).toLocaleString();
+          // Update Totals
+          document.getElementById("grandTotal").innerText = stats
+            .reduce((a, b) => a + parseInt(b.count || 0), 0)
+            .toLocaleString();
+          document.getElementById("count-ooredoo").innerText = stats
+            .reduce((a, b) => a + parseInt(b.ooredoo || 0), 0)
+            .toLocaleString();
+          document.getElementById("count-dhiraagu").innerText = stats
+            .reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0)
+            .toLocaleString();
 
-        // Leaderboard Update
-        document.getElementById("leaderboardList").innerHTML = topSpenders.map((u, i) => `
+          // Leaderboard Update
+          document.getElementById("leaderboardList").innerHTML = topSpenders
+            .map(
+              (u, i) => `
             <div class="flex justify-between items-center bg-black/30 p-3 rounded-2xl border border-slate-800/50">
                 <div class="flex items-center gap-3">
-                    <span class="text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : "text-amber-600"}">#${i + 1}</span>
-                    <span class="text-sm font-bold text-white tracking-wider">${u.msisdn}</span>
+                    <span class="text-lg font-black ${
+                      i === 0
+                        ? "text-yellow-400"
+                        : i === 1
+                        ? "text-slate-300"
+                        : "text-amber-600"
+                    }">#${i + 1}</span>
+                    <span class="text-sm font-bold text-white tracking-wider">${
+                      u.msisdn
+                    }</span>
                 </div>
-                <div class="text-right"><span class="text-xs font-black text-slate-400">${u.total_messages}</span></div>
-            </div>`).join("");
+                <div class="text-right"><span class="text-xs font-black text-slate-400">${
+                  u.total_messages
+                }</span></div>
+            </div>`
+            )
+            .join("");
 
-        // Handle categories: Use active_time if available, otherwise fallback to keyword
-        const categories = stats.map((s) => (currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time) ? s.active_time : s.keyword);
+          // Handle categories: Use active_time if available, otherwise fallback to keyword
+          const categories = stats.map((s) =>
+            currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time
+              ? s.active_time
+              : s.keyword
+          );
 
-        // 1. HEATMAP
-        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const hours = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
-        const heatmapSeries = days.map((d) => ({
-            name: d,
-            data: hours.map((h, hi) => {
-                const f = heatmapRaw.find((r) => r.day === d && parseInt(r.hour) === hi);
+          // 1. HEATMAP
+          const days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          const hours = Array.from(
+            { length: 24 },
+            (_, i) => `${String(i).padStart(2, "0")}:00`
+          );
+          const heatmapSeries = days
+            .map((d) => ({
+              name: d,
+              data: hours.map((h, hi) => {
+                const f = heatmapRaw.find(
+                  (r) => r.day === d && parseInt(r.hour) === hi
+                );
                 return { x: h, y: f ? parseInt(f.count) : 0 };
-            }),
-        })).reverse();
+              }),
+            }))
+            .reverse();
 
-        if (heatmapChart) heatmapChart.destroy();
-        heatmapChart = new ApexCharts(document.querySelector("#heatmapChart"), {
-            series: heatmapSeries,
-            chart: { type: "heatmap", height: 380, toolbar: { show: false }, foreColor: "#64748b" },
-            dataLabels: { enabled: false },
-            plotOptions: {
+          if (heatmapChart) heatmapChart.destroy();
+          heatmapChart = new ApexCharts(
+            document.querySelector("#heatmapChart"),
+            {
+              series: heatmapSeries,
+              chart: {
+                type: "heatmap",
+                height: 380,
+                toolbar: { show: false },
+                foreColor: "#64748b",
+              },
+              dataLabels: { enabled: false },
+              plotOptions: {
                 heatmap: {
-                    shadeIntensity: 0.5, radius: 4,
-                    colorScale: {
-                        ranges: [
-                            { from: 0, to: 0, color: "#0f172a", name: "None" },
-                            { from: 1, to: 50, color: "#fbbf24", name: "Low" },
-                            { from: 51, to: 200, color: "#f97316", name: "High" },
-                            { from: 201, to: 1000000, color: "#ef4444", name: "Peak" }
-                        ]
-                    }
-                }
-            },
-            xaxis: { type: 'category' }
-        });
-        heatmapChart.render();
+                  shadeIntensity: 0.5,
+                  radius: 4,
+                  colorScale: {
+                    ranges: [
+                      { from: 0, to: 0, color: "#0f172a", name: "None" },
+                      { from: 1, to: 50, color: "#fbbf24", name: "Low" },
+                      { from: 51, to: 200, color: "#f97316", name: "High" },
+                      {
+                        from: 201,
+                        to: 1000000,
+                        color: "#ef4444",
+                        name: "Peak",
+                      },
+                    ],
+                  },
+                },
+              },
+              xaxis: { type: "category" },
+            }
+          );
+          heatmapChart.render();
 
-        // 2. BAR CHART
-        if (barChart) barChart.destroy();
-        barChart = new ApexCharts(document.querySelector("#keywordBarChart"), {
-            series: [
-                { name: "Ooredoo", data: stats.map((s) => parseInt(s.ooredoo || 0)), color: "#f43f5e" },
-                { name: "Dhiraagu", data: stats.map((s) => parseInt(s.dhiraagu || 0)), color: "#FC7022" }
-            ],
-            chart: { type: "bar", height: 420, stacked: true, toolbar: { show: false }, foreColor: "#64748b" },
-            plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
-            xaxis: {
+          // 2. BAR CHART
+          if (barChart) barChart.destroy();
+          barChart = new ApexCharts(
+            document.querySelector("#keywordBarChart"),
+            {
+              series: [
+                {
+                  name: "Ooredoo",
+                  data: stats.map((s) => parseInt(s.ooredoo || 0)),
+                  color: "#f43f5e",
+                },
+                {
+                  name: "Dhiraagu",
+                  data: stats.map((s) => parseInt(s.dhiraagu || 0)),
+                  color: "#FC7022",
+                },
+              ],
+              chart: {
+                type: "bar",
+                height: 420,
+                stacked: true,
+                toolbar: { show: false },
+                foreColor: "#64748b",
+              },
+              plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+              xaxis: {
                 categories: categories,
-                labels: { rotate: -45, rotateAlways: true, maxHeight: 120, style: { fontSize: "11px", fontWeight: 700 } }
-            },
-            grid: { borderColor: "#1e293b", strokeDashArray: 4, padding: { bottom: 40 } },
-            legend: { position: "top", horizontalAlign: "right", offsetY: -10 }
-        });
-        barChart.render();
+                labels: {
+                  rotate: -45,
+                  rotateAlways: true,
+                  maxHeight: 120,
+                  style: { fontSize: "11px", fontWeight: 700 },
+                },
+              },
+              grid: {
+                borderColor: "#1e293b",
+                strokeDashArray: 4,
+                padding: { bottom: 40 },
+              },
+              legend: {
+                position: "top",
+                horizontalAlign: "right",
+                offsetY: -10,
+              },
+            }
+          );
+          barChart.render();
 
-        // 3. DONUT
-        if (donutChart) donutChart.destroy();
-        donutChart = new ApexCharts(document.querySelector("#operatorDonut"), {
-            series: [stats.reduce((a, b) => a + parseInt(b.ooredoo || 0), 0), stats.reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0)],
-            chart: { type: "donut", height: 280 },
-            labels: ["Ooredoo", "Dhiraagu"],
-            colors: ["#f43f5e", "#FC7022"],
-            stroke: { show: false },
-            plotOptions: { pie: { donut: { size: "82%", labels: { show: true, total: { show: true, label: "TOTAL", color: "#64748b" }, value: { color: "#fff" } } } } },
-            legend: { show: false }
-        });
-        donutChart.render();
+          // 3. DONUT
+          if (donutChart) donutChart.destroy();
+          donutChart = new ApexCharts(
+            document.querySelector("#operatorDonut"),
+            {
+              series: [
+                stats.reduce((a, b) => a + parseInt(b.ooredoo || 0), 0),
+                stats.reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0),
+              ],
+              chart: { type: "donut", height: 280 },
+              labels: ["Ooredoo", "Dhiraagu"],
+              colors: ["#f43f5e", "#FC7022"],
+              stroke: { show: false },
+              plotOptions: {
+                pie: {
+                  donut: {
+                    size: "82%",
+                    labels: {
+                      show: true,
+                      total: { show: true, label: "TOTAL", color: "#64748b" },
+                      value: { color: "#fff" },
+                    },
+                  },
+                },
+              },
+              legend: { show: false },
+            }
+          );
+          donutChart.render();
 
-        // 4. TREND LINE
-        const kws = (currentProgramName === "Komme Gadiyaku Inaameh") 
-                    ? promoOrder 
-                    : [...new Set(trendData.map((d) => d.keyword))];
-        const ds = [...new Set(trendData.map((d) => d.day))].sort();
-        const trendSeries = kws.map((kw) => ({
+          // 4. TREND LINE
+          const kws =
+            currentProgramName === "Komme Gadiyaku Inaameh"
+              ? promoOrder
+              : [...new Set(trendData.map((d) => d.keyword))];
+          const ds = [...new Set(trendData.map((d) => d.day))].sort();
+          const trendSeries = kws.map((kw) => ({
             name: kw,
             data: ds.map((day) => {
-                const entry = trendData.find((d) => d.day === day && d.keyword === kw);
-                return entry ? parseInt(entry.count) : 0;
+              const entry = trendData.find(
+                (d) => d.day === day && d.keyword === kw
+              );
+              return entry ? parseInt(entry.count) : 0;
             }),
-        }));
+          }));
 
-        if (trendChart) trendChart.destroy();
-        trendChart = new ApexCharts(document.querySelector("#dailyTrendLineChart"), {
-            series: trendSeries,
-            chart: { type: "line", height: 400, toolbar: { show: false }, foreColor: "#64748b" },
-            colors: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#10b981", "#6366f1", "#d946ef", "#f97316", "#14b8a6"],
-            stroke: { curve: "smooth", width: 3 },
-            xaxis: { categories: ds },
-            grid: { borderColor: "#1e293b" },
-            legend: { position: 'top', horizontalAlign: 'center' }
-        });
-        trendChart.render();
-
-    } catch (err) { 
-        console.error("refreshDetail Error:", err); 
-    }
-}
+          if (trendChart) trendChart.destroy();
+          trendChart = new ApexCharts(
+            document.querySelector("#dailyTrendLineChart"),
+            {
+              series: trendSeries,
+              chart: {
+                type: "line",
+                height: 400,
+                toolbar: { show: false },
+                foreColor: "#64748b",
+              },
+              colors: [
+                "#3b82f6",
+                "#8b5cf6",
+                "#ec4899",
+                "#f59e0b",
+                "#10b981",
+                "#06b6d4",
+                "#f43f5e",
+                "#10b981",
+                "#6366f1",
+                "#d946ef",
+                "#f97316",
+                "#14b8a6",
+              ],
+              stroke: { curve: "smooth", width: 3 },
+              xaxis: { categories: ds },
+              grid: { borderColor: "#1e293b" },
+              legend: { position: "top", horizontalAlign: "center" },
+            }
+          );
+          trendChart.render();
+        } catch (err) {
+          console.error("refreshDetail Error:", err);
+        }
+      }
 
       socket.on("dataUpdated", refreshDetail);
       window.onload = refreshDetail;
     </script>
-</body>
+  </body>
 </html>

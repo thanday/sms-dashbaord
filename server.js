@@ -7,7 +7,7 @@ const csv = require("csv-parser");
 const fs = require("fs");
 const session = require("express-session"); // Added
 const path = require("path");
-const axios = require('axios');
+const axios = require("axios");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -32,55 +32,57 @@ app.use(
 
 // --- AUTH MIDDLEWARE ---
 const isAdmin = (req, res, next) => {
-  if (req.session.role === 'admin' || req.session.role === 'producer' || req.session.role === 'marketing') {
-      return next();
+  if (
+    req.session.role === "admin" ||
+    req.session.role === "producer" ||
+    req.session.role === "marketing"
+  ) {
+    return next();
   }
   // Store the original URL they wanted to visit
-  req.session.returnTo = req.originalUrl; 
-  res.redirect('/login');
+  req.session.returnTo = req.originalUrl;
+  res.redirect("/login");
 };
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  
+
   if (username === "admin" && password === "sstv@2026") {
     req.session.authenticated = true;
-    req.session.role = 'admin';
-    
+    req.session.role = "admin";
+
     // Check if there is a saved URL, otherwise go to /admin
     const redirectUrl = req.session.returnTo || "/admin";
     delete req.session.returnTo; // Clear it after use
     res.redirect(redirectUrl);
-
   } else if (username === "marketing" && password === "marketing@2026") {
     req.session.authenticated = true;
-    req.session.role = 'marketing';
-    
+    req.session.role = "marketing";
+
     // Check if there is a saved URL, otherwise go to /hadhiyaa-badhiyaa
     const redirectUrl = req.session.returnTo || "/hadhiyaa-badhiyaa";
-    delete req.session.returnTo; 
+    delete req.session.returnTo;
     res.redirect(redirectUrl);
-
   } else {
     res.render("login", { error: "Invalid Username or Password" });
   }
 });
 
-   const pool = new Pool({
-     user: "postgres",
-     host: "localhost",
-     database: "sms_stats",
-     password: "Sun.Media@94.6", 
-     port: 5432,
-   });
+ const pool = new Pool({
+   user: "postgres",
+   host: "localhost",
+   database: "sms_stats",
+   password: "Sun.Media@94.6",
+   port: 5432,
+ });
 
-//   const pool = new Pool({
-//    user: "azman",
-//    host: "localhost",
-//    database: "sms_stats",
-//    password: "", 
-//    port: 5432,
-//  });
+  //  const pool = new Pool({
+  //   user: "azman",
+  //   host: "localhost",
+  //   database: "sms_stats",
+  //   password: "",
+  //   port: 5432,
+  // });
 
 // --- PAGE ROUTES ---
 // Dashboard is now Home
@@ -129,49 +131,51 @@ app.get("/madheena-quiz", isAdmin, (req, res) => {
 
 // hadhiyaa badhiyaa gift portal
 app.get("/hadhiyaa-badhiyaa", isAdmin, (req, res) => {
-  res.render("hadhiyaa-badhiyaa", { 
-      role: req.session.role 
+  res.render("hadhiyaa-badhiyaa", {
+    role: req.session.role,
   });
 });
 
-app.get("/kr-portal", isAdmin, (req, res) => { 
-  res.render("kr-portal"); 
+app.get("/kr-portal", isAdmin, (req, res) => {
+  res.render("kr-portal");
 });
 
 app.get("/qibla-quiz", isAdmin, (req, res) => {
   res.render("qibla-quiz", { role: req.session.role });
 });
 
-
+app.get("/hb-portal", isAdmin, (req, res) => {
+  res.render("hb-portal");
+});
 
 // API: Check if phone exists
 app.get("/api/gifts/check/:phone", isAdmin, async (req, res) => {
   const result = await pool.query(
-      "SELECT day_number FROM hadhiyaa_badhiyaa_gifts WHERE phone_number = $1 LIMIT 1", 
-      [req.params.phone]
+    "SELECT day_number FROM hadhiyaa_badhiyaa_gifts WHERE phone_number = $1 LIMIT 1",
+    [req.params.phone]
   );
   if (result.rows.length > 0) {
-      res.json({ exists: true, day: result.rows[0].day_number });
+    res.json({ exists: true, day: result.rows[0].day_number });
   } else {
-      res.json({ exists: false });
+    res.json({ exists: false });
   }
 });
 
 app.put("/api/gifts/update/:id", isAdmin, async (req, res) => {
   const { id } = req.params;
   const { field, value } = req.body;
-  
-  const allowedFields = ['marketing_comments', 'status'];
-  const dbField = field === 'comments' ? 'marketing_comments' : 'status';
-  
+
+  const allowedFields = ["marketing_comments", "status"];
+  const dbField = field === "comments" ? "marketing_comments" : "status";
+
   try {
-      await pool.query(
-          `UPDATE hadhiyaa_badhiyaa_gifts SET ${dbField} = $1 WHERE id = $2`,
-          [value, id]
-      );
-      res.json({ success: true });
+    await pool.query(
+      `UPDATE hadhiyaa_badhiyaa_gifts SET ${dbField} = $1 WHERE id = $2`,
+      [value, id]
+    );
+    res.json({ success: true });
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -179,28 +183,73 @@ app.put("/api/gifts/update/:id", isAdmin, async (req, res) => {
 app.post("/api/gifts", isAdmin, async (req, res) => {
   const { name, phone, age, day, comments, status } = req.body;
   try {
-      await pool.query(
-          "INSERT INTO hadhiyaa_badhiyaa_gifts (participant_name, phone_number, age, day_number, marketing_comments, status) VALUES ($1, $2, $3, $4, $5, $6)",
-          [name, phone, age, day, comments, status]
-      );
-      res.json({ success: true });
+    await pool.query(
+      "INSERT INTO hadhiyaa_badhiyaa_gifts (participant_name, phone_number, age, day_number, marketing_comments, status) VALUES ($1, $2, $3, $4, $5, $6)",
+      [name, phone, age, day, comments, status]
+    );
+    res.json({ success: true });
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
+// 1. Get Category Counts for Hadhiyaa Badhiyaa
+app.get("/api/hb/stats", isAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+          SELECT 
+              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%') as essenza_count,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%') as skip_count,
+              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%') as bk_count
+          FROM sms_logs
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
+          AND received_at >= '2026-02-18 00:00:00';
+      `);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Export Numbers for a Specific Category (Includes Duplicates)
+app.get("/api/hb/export/:category", isAdmin, async (req, res) => {
+  const { category } = req.params;
+  let filter = "";
+
+  if (category === "essenza") filter = "ESSENZA";
+  else if (category === "skip") filter = "Skip n Smile";
+  else if (category === "bk") filter = "BK";
+
+  try {
+    const result = await pool.query(
+      `
+          SELECT msisdn 
+          FROM sms_logs 
+          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
+          AND message_content ILIKE '%' || $1 || '%'
+          AND received_at >= '2026-02-18 00:00:00'
+          ORDER BY received_at ASC;
+      `,
+      [filter]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // API: Set or Update the correct answer key for a specific Day
 app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
   const { day, answer } = req.body;
   try {
-      await pool.query(
-          "INSERT INTO mq_correct_answers (day_number, correct_option) VALUES ($1, $2) ON CONFLICT (day_number) DO UPDATE SET correct_option = $2",
-          [day, answer]
-      );
-      res.json({ success: true });
+    await pool.query(
+      "INSERT INTO mq_correct_answers (day_number, correct_option) VALUES ($1, $2) ON CONFLICT (day_number) DO UPDATE SET correct_option = $2",
+      [day, answer]
+    );
+    res.json({ success: true });
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -218,22 +267,30 @@ const KR_QUERY = `
 `;
 
 app.get("/api/kr/leaderboard", isAdmin, async (req, res) => {
-    try {
-        const result = await pool.query(`${KR_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`);
-        res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const result = await pool.query(
+      `${KR_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/api/kr/export-winners", isAdmin, async (req, res) => {
-    try {
-        const result = await pool.query(`${KR_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`);
-        res.json(result.rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const result = await pool.query(
+      `${KR_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/api/kr/daily-details", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           SELECT 
               msisdn, 
               message_content,
@@ -246,14 +303,13 @@ app.get("/api/kr/daily-details", isAdmin, async (req, res) => {
           GROUP BY msisdn, comp_day, message_content
           ORDER BY comp_day DESC, msisdn ASC;
       `);
-      
-      res.json(result.rows || []);
+
+    res.json(result.rows || []);
   } catch (err) {
-      console.error("KR Daily Details Error:", err);
-      res.status(500).json({ error: err.message });
+    console.error("KR Daily Details Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
-
 
 // Qibla Quiz Leaderboard (Top 10 display)
 // This works on both Mac and Ubuntu regardless of the ID number
@@ -271,21 +327,29 @@ const QIBLA_QUERY = `
 
 app.get("/api/qibla/leaderboard", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`${QIBLA_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`);
-      res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const result = await pool.query(
+      `${QIBLA_QUERY} SELECT msisdn, hits as correct_days FROM ParticipantScores ORDER BY hits DESC, msisdn ASC;`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/api/qibla/export-winners", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`${QIBLA_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`);
-      res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const result = await pool.query(
+      `${QIBLA_QUERY} SELECT msisdn FROM ParticipantScores WHERE hits = (SELECT MAX(hits) FROM ParticipantScores);`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get("/api/qibla/daily-details", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           SELECT 
               msisdn, 
               ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) as comp_day
@@ -297,20 +361,18 @@ app.get("/api/qibla/daily-details", isAdmin, async (req, res) => {
           GROUP BY msisdn, comp_day
           ORDER BY comp_day DESC, msisdn ASC;
       `);
-      
-      console.log(`Daily details found ${result.rows.length} records.`);
-      res.json(result.rows || []);
+
+    console.log(`Daily details found ${result.rows.length} records.`);
+    res.json(result.rows || []);
   } catch (err) {
-      console.error("Qibla Daily Details Error:", err);
-      res.status(500).json({ error: err.message });
+    console.error("Qibla Daily Details Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-
-
 app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as correct_days
           FROM sms_logs
           JOIN mq_correct_answers ca ON ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1) = ca.day_number
@@ -321,16 +383,16 @@ app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
           ORDER BY correct_days DESC, msisdn ASC
           LIMIT 10;
       `);
-      res.json(result.rows || []);
+    res.json(result.rows || []);
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // API 2: Full Winner List for Export (All tied for 1st place)
 app.get("/api/mq/export-winners", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           WITH ParticipantScores AS (
               SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as correct_days
               FROM sms_logs
@@ -344,16 +406,16 @@ app.get("/api/mq/export-winners", isAdmin, async (req, res) => {
           WHERE correct_days = (SELECT MAX(correct_days) FROM ParticipantScores)
           ORDER BY msisdn ASC;
       `);
-      res.json(result.rows || []);
+    res.json(result.rows || []);
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
 // API: MQ Daily Details
 app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
   try {
-      const result = await pool.query(`
+    const result = await pool.query(`
           SELECT DISTINCT ON (comp_day, msisdn)
               (DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1 AS comp_day,
               msisdn
@@ -364,25 +426,28 @@ app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
           AND received_at >= '2026-02-18 00:00:00'
           ORDER BY comp_day DESC, msisdn ASC;
       `);
-      res.json(result.rows || []);
+    res.json(result.rows || []);
   } catch (err) {
-      console.error("MQ DAILY DETAILS ERROR:", err.message);
-      res.status(500).json({ error: err.message });
+    console.error("MQ DAILY DETAILS ERROR:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
 // API: Get List
 app.get("/api/gifts", isAdmin, async (req, res) => {
-  const result = await pool.query("SELECT * FROM hadhiyaa_badhiyaa_gifts ORDER BY created_at DESC");
+  const result = await pool.query(
+    "SELECT * FROM hadhiyaa_badhiyaa_gifts ORDER BY created_at DESC"
+  );
   res.json(result.rows);
 });
 
 app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
   const { day, date, programId } = req.body;
-  
+
   try {
     // 1. Fetch Winners and Active Times from DB
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT w.keyword, k.active_time, w.msisdn
       FROM draw_winners w
       JOIN keywords k ON w.keyword = k.name AND w.program_id = k.program_id
@@ -393,35 +458,45 @@ app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
           WHEN 'EE' THEN 5 WHEN 'FF' THEN 6 WHEN 'GG' THEN 7 WHEN 'HH' THEN 8
           WHEN 'JJ' THEN 9 WHEN 'KK' THEN 10 WHEN 'LL' THEN 11 WHEN 'MM' THEN 12
         END ASC;
-    `, [day, programId]);
+    `,
+      [day, programId]
+    );
 
     if (result.rows.length === 0) {
-        return res.status(404).json({ error: "No winners found to broadcast." });
+      return res.status(404).json({ error: "No winners found to broadcast." });
     }
 
     // 2. Format the Telegram Message
     const d = new Date(date);
-    const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-    
+    const formattedDate = `${String(d.getDate()).padStart(2, "0")}/${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}/${d.getFullYear()}`;
+
     let message = `🏆 *DAY ${day} (${formattedDate}) - Winners*\n\n`;
-    
-    result.rows.forEach(row => {
+
+    result.rows.forEach((row) => {
       message += `🔹 *${row.keyword}* (${row.active_time}) - \`${row.msisdn}\`\n`;
     });
 
     // 3. Send to the Group Chat
-    const botToken = '8609195590:AAGqf9Qauwz54TMFOKKeU1ZV3upqzfGj4wk';
-    const chatId = '-5284447996'; 
-    
-    const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'Markdown'
-    });
+    const botToken = "8609195590:AAGqf9Qauwz54TMFOKKeU1ZV3upqzfGj4wk";
+    const chatId = "-5284447996";
+
+    const response = await axios.post(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        chat_id: chatId,
+        text: message,
+        parse_mode: "Markdown",
+      }
+    );
 
     res.json({ success: true });
   } catch (err) {
-    console.error("BROADCAST ERROR:", err.response ? err.response.data : err.message);
+    console.error(
+      "BROADCAST ERROR:",
+      err.response ? err.response.data : err.message
+    );
     res.status(500).json({ error: err.message });
   }
 });
@@ -465,67 +540,71 @@ app.delete("/api/clear-draw/:programId", isAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/draw-numbers/:programId', isAdmin, async (req, res) => {
+app.get("/api/draw-numbers/:programId", isAdmin, async (req, res) => {
   const { programId } = req.params;
-  const { date, keyword } = req.query; 
+  const { date, keyword } = req.query;
 
   try {
-      const timeSlots = {
-          'AA': { start: '13:00:00', end: '13:59:59' },
-          'BB': { start: '14:00:00', end: '14:59:59' },
-          'CC': { start: '15:00:00', end: '15:59:59' },
-          'DD': { start: '16:00:00', end: '16:59:59' },
-          'EE': { start: '17:00:00', end: '17:59:59' },
-          'FF': { start: '18:00:00', end: '18:59:59' },
-          'GG': { start: '19:00:00', end: '19:59:59' },
-          'HH': { start: '20:00:00', end: '20:59:59' },
-          'JJ': { start: '21:00:00', end: '21:59:59' },
-          'KK': { start: '22:00:00', end: '22:59:59' },
-          'LL': { start: '23:00:00', end: '23:59:59' },
-          'MM': { start: '00:00:00', end: '00:59:59', nextDay: true }
-      };
+    const timeSlots = {
+      AA: { start: "13:00:00", end: "13:59:59" },
+      BB: { start: "14:00:00", end: "14:59:59" },
+      CC: { start: "15:00:00", end: "15:59:59" },
+      DD: { start: "16:00:00", end: "16:59:59" },
+      EE: { start: "17:00:00", end: "17:59:59" },
+      FF: { start: "18:00:00", end: "18:59:59" },
+      GG: { start: "19:00:00", end: "19:59:59" },
+      HH: { start: "20:00:00", end: "20:59:59" },
+      JJ: { start: "21:00:00", end: "21:59:59" },
+      KK: { start: "22:00:00", end: "22:59:59" },
+      LL: { start: "23:00:00", end: "23:59:59" },
+      MM: { start: "00:00:00", end: "00:59:59", nextDay: true },
+    };
 
-      const kwName = keyword.toUpperCase().trim();
-      const slot = timeSlots[kwName];
-      if (!slot) return res.status(400).json({ error: "Invalid Slot" });
+    const kwName = keyword.toUpperCase().trim();
+    const slot = timeSlots[kwName];
+    if (!slot) return res.status(400).json({ error: "Invalid Slot" });
 
-      let searchDate = date;
-      if (slot.nextDay) {
-          const d = new Date(date);
-          d.setDate(d.getDate() + 1);
-          searchDate = d.toISOString().split('T')[0];
-      }
+    let searchDate = date;
+    if (slot.nextDay) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + 1);
+      searchDate = d.toISOString().split("T")[0];
+    }
 
-      const result = await pool.query(
-          `SELECT msisdn, message_content FROM sms_logs 
+    const result = await pool.query(
+      `SELECT msisdn, message_content FROM sms_logs 
            WHERE keyword_id = (SELECT id FROM keywords WHERE name = $1 AND program_id = $2)
            AND received_at >= $3::timestamp + $4::interval
            AND received_at <= $3::timestamp + $5::interval`,
-          [kwName, programId, searchDate, slot.start, slot.end]
-      );
+      [kwName, programId, searchDate, slot.start, slot.end]
+    );
 
-      const numbers = result.rows.filter(row => {
-          const msg = (row.message_content || "").toString().trim().toUpperCase();
-          
-          const matchesKeyword = msg === kwName;
-          const matchesKeywordWithSSTV = msg.startsWith(`${kwName} SSTV`) || msg.startsWith(`${kwName}SSTV`);
-          const isSSTV = msg === "SSTV";
+    const numbers = result.rows
+      .filter((row) => {
+        const msg = (row.message_content || "").toString().trim().toUpperCase();
 
-          return matchesKeyword || matchesKeywordWithSSTV || isSSTV;
-      }).map(row => row.msisdn);
+        const matchesKeyword = msg === kwName;
+        const matchesKeywordWithSSTV =
+          msg.startsWith(`${kwName} SSTV`) || msg.startsWith(`${kwName}SSTV`);
+        const isSSTV = msg === "SSTV";
 
-      res.json({ numbers }); 
+        return matchesKeyword || matchesKeywordWithSSTV || isSSTV;
+      })
+      .map((row) => row.msisdn);
+
+    res.json({ numbers });
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Route to export winners as CSV 
+// Route to export winners as CSV
 app.get("/api/export-daily-winners", async (req, res) => {
-  const { day } = req.query; 
-  
+  const { day } = req.query;
+
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         w.day_number as "Day", 
         TO_CHAR(w.draw_date, 'YYYY-MM-DD') as "FormattedDate", 
@@ -541,19 +620,28 @@ app.get("/api/export-daily-winners", async (req, res) => {
           WHEN 'EE' THEN 5 WHEN 'FF' THEN 6 WHEN 'GG' THEN 7 WHEN 'HH' THEN 8
           WHEN 'JJ' THEN 9 WHEN 'KK' THEN 10 WHEN 'LL' THEN 11 WHEN 'MM' THEN 12
         END ASC;
-    `, [day]);
+    `,
+      [day]
+    );
 
     const rows = result.rows;
-    if (rows.length === 0) return res.status(404).send("No winners found for this day.");
+    if (rows.length === 0)
+      return res.status(404).send("No winners found for this day.");
 
     const headers = "Day,Date,Active Time,Slot,Winner Phone\n";
-    
-    const csvData = rows.map(row => 
-      `${row.Day},${row.FormattedDate},"${row["Active Time"]}",${row.Slot},${row["Winner Phone"]}`
-    ).join("\n");
+
+    const csvData = rows
+      .map(
+        (row) =>
+          `${row.Day},${row.FormattedDate},"${row["Active Time"]}",${row.Slot},${row["Winner Phone"]}`
+      )
+      .join("\n");
 
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename=Day_${day}_Winners.csv`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Day_${day}_Winners.csv`
+    );
     res.status(200).send(headers + csvData);
   } catch (err) {
     res.status(500).send("Export failed: " + err.message);

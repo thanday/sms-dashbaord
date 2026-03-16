@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hadhiyaa Badhiyaa | SSTV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0a0205; color: #94a3b8; }
+        .gift-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(236, 72, 153, 0.1); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+        .gift-card:hover { border-color: rgba(236, 72, 153, 0.4); transform: translateY(-8px); background: rgba(236, 72, 153, 0.05); }
+        .glow-pink { box-shadow: 0 0 50px rgba(236, 72, 153, 0.1); }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+            <div>
+                <h1 class="text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Hadhiyaa <span class="text-pink-500">Badhiyaa</span></h1>
+                <p class="text-slate-500 font-bold text-[10px] uppercase tracking-[0.5em] mt-4 flex items-center gap-3">
+                    <span class="w-12 h-[1px] bg-pink-500"></span> Eid Giveaway (Keyword: HB)
+                </p>
+            </div>
+            <div class="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Status</span>
+                <span class="text-emerald-500 font-bold text-xs flex items-center gap-2">● Live Tracking</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="gift-card rounded-[3rem] p-10 flex flex-col items-center text-center glow-pink">
+                <div class="w-20 h-20 bg-pink-500/10 rounded-3xl flex items-center justify-center mb-8 border border-pink-500/20">
+                    <span class="text-3xl">✨</span>
+                </div>
+                <h3 class="text-white font-black text-2xl uppercase tracking-tighter mb-1">ESSENZA</h3>
+                <p class="text-pink-500 text-[10px] font-black uppercase tracking-widest mb-8">Perfume Pack</p>
+                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-essenza">0</div>
+                <button onclick="exportHB('essenza')" class="w-full bg-pink-600 hover:bg-pink-500 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-pink-500/20">
+                    Export Draw
+                </button>
+            </div>
+
+            <div class="gift-card rounded-[3rem] p-10 flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-8 border border-blue-500/20">
+                    <span class="text-3xl">🚲</span>
+                </div>
+                <h3 class="text-white font-black text-2xl uppercase tracking-tighter mb-1">Skip n Smile</h3>
+                <p class="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-8">Bicycle Pack</p>
+                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-skip">0</div>
+                <button onclick="exportHB('skip')" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-blue-500/20">
+                    Export Draw
+                </button>
+            </div>
+
+            <div class="gift-card rounded-[3rem] p-10 flex flex-col items-center text-center">
+                <div class="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-8 border border-amber-500/20">
+                    <span class="text-3xl">🎣</span>
+                </div>
+                <h3 class="text-white font-black text-2xl uppercase tracking-tighter mb-1">BK</h3>
+                <p class="text-amber-500 text-[10px] font-black uppercase tracking-widest mb-8">Fishing Rod Pack</p>
+                <div class="text-6xl font-black text-white mb-10 tabular-nums" id="count-bk">0</div>
+                <button onclick="exportHB('bk')" class="w-full bg-amber-600 hover:bg-amber-500 text-black py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-amber-500/20">
+                    Export Draw
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/hb/stats');
+                const data = await res.json();
+                
+                // Animate numbers
+                animateValue("count-essenza", 0, data.essenza_count, 1000);
+                animateValue("count-skip", 0, data.skip_count, 1000);
+                animateValue("count-bk", 0, data.bk_count, 1000);
+            } catch (e) { console.error("Stats fetch error:", e); }
+        }
+
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const timer = setInterval(() => {
+                current += increment;
+                obj.innerText = current;
+                if (current == end) clearInterval(timer);
+            }, stepTime || 1);
+        }
+
+        async function exportHB(cat) {
+            const res = await fetch(`/api/hb/export/${cat}`);
+            const data = await res.json();
+            if(!data.length) return alert("No entries found for this category.");
+            
+            const content = data.map(r => r.msisdn).join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `hb_${cat}_entries_${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+        }
+
+        loadStats();
+        setInterval(loadStats, 15000); // Refresh every 15s
+    </script>
+</body>
+</html>
