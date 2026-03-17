@@ -307,7 +307,6 @@
           const topSpenders = await spenderRes.json();
           const syncData = await syncRes.json();
 
-          // Update Last Sync UI (with safety check for other programs)
           const syncElement = document.getElementById("lastSyncTime");
           if (syncElement && syncData && syncData.last_sync) {
             const date = new Date(syncData.last_sync);
@@ -321,7 +320,6 @@
             });
           }
 
-          // IMPROVED SORTING LOGIC
           let stats;
           if (currentProgramName === "Komme Gadiyaku Inaameh") {
             stats = statsRaw.sort(
@@ -329,16 +327,13 @@
                 promoOrder.indexOf(a.keyword) - promoOrder.indexOf(b.keyword)
             );
           } else {
-            // Sort by message count (descending) for all other programs like Qibla Quiz
             stats = statsRaw.sort(
               (a, b) => parseInt(b.count) - parseInt(a.count)
             );
           }
 
-          // If no data, exit early to prevent chart crashes
           if (!stats || stats.length === 0) return;
 
-          // Update Totals
           document.getElementById("grandTotal").innerText = stats
             .reduce((a, b) => a + parseInt(b.count || 0), 0)
             .toLocaleString();
@@ -349,7 +344,6 @@
             .reduce((a, b) => a + parseInt(b.dhiraagu || 0), 0)
             .toLocaleString();
 
-          // Leaderboard Update
           document.getElementById("leaderboardList").innerHTML = topSpenders
             .map(
               (u, i) => `
@@ -373,14 +367,12 @@
             )
             .join("");
 
-          // Handle categories: Use active_time if available, otherwise fallback to keyword
           const categories = stats.map((s) =>
             currentProgramName === "Komme Gadiyaku Inaameh" && s.active_time
               ? s.active_time
               : s.keyword
           );
 
-          // 1. HEATMAP
           const days = [
             "Sunday",
             "Monday",

@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-const AdmZip = require('adm-zip'); // New dependency for extraction
+const AdmZip = require('adm-zip'); 
 const { Pool } = require('pg');
 const { io: clientIo } = require("socket.io-client");
 
@@ -13,7 +13,7 @@ const targetOperator = process.argv[2];
       user: 'postgres',
       host: 'localhost',
       database: 'sms_stats',
-      password: 'Sun.Media@94.6', // Ensure this is exactly like your server.js
+      password: 'Sun.Media@94.6', 
       port: 5432,
   });
 
@@ -28,10 +28,7 @@ const targetOperator = process.argv[2];
 const downloadPath = path.resolve(__dirname, 'temp_downloads');
 if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
-/**
- * OOREDOO SCRAPER 
- * Restored working version (Standard CSV)
- */
+
 async function scrapeOoredoo() {
     const oldFiles = fs.readdirSync(downloadPath);
     for (const file of oldFiles) {
@@ -100,9 +97,7 @@ async function scrapeOoredoo() {
     }
 }
 
-/**
- * DHIRAAGU SCRAPER: Final Resilient Frame Version
- */
+
 async function scrapeDhiraagu() {
     const browser = await puppeteer.launch({ 
         headless: true, 
@@ -122,19 +117,16 @@ async function scrapeDhiraagu() {
                 status: `Dhiraagu: ${kw.name} (Isolated Session)` 
             });
 
-            // 1. CLEAR old files
             fs.readdirSync(downloadPath).forEach(f => {
                 if (f.endsWith('.zip')) try { fs.unlinkSync(path.join(downloadPath, f)); } catch(e) {}
             });
 
-            // 2. FRESH CONTEXT
             const context = await browser.createBrowserContext();
             const loginPage = await context.newPage();
             const client = await loginPage.target().createCDPSession();
             await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadPath });
 
             try {
-                // 3. LOGIN - Use 'networkidle0' to ensure page is fully loaded
                 await loginPage.goto('https://corporatecms.dhiraagu.com.mv/', { waitUntil: 'networkidle0' });
                 
                 await loginPage.mouse.click(400, 300); 
@@ -143,20 +135,16 @@ async function scrapeDhiraagu() {
                 await loginPage.keyboard.press('Tab');
                 await loginPage.keyboard.type('Sunmedia123');
 
-                // 4. CAPTURE POPUP - Wait for the target specifically
                 const popupPromise = new Promise(resolve => context.once('targetcreated', target => resolve(target.page())));
                 await loginPage.keyboard.press('Enter');
                 const popup = await popupPromise;
 
-                // Crucial: Wait for the popup to finish its internal redirects
                 await popup.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => {});
                 
                 const popupClient = await popup.target().createCDPSession();
                 await popupClient.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadPath });
                 await popup.setViewport({ width: 1440, height: 900 });
 
-                // 5. MIS -> REPORTS (Recursive Frame Search)
-                // We use a small delay to prevent "Context Destroyed"
                 await new Promise(r => setTimeout(r, 2000));
                 await popup.evaluate(async () => {
                     const findAndClick = (doc, text) => {
@@ -168,15 +156,12 @@ async function scrapeDhiraagu() {
                         }
                     };
                     findAndClick(document, 'MIS');
-                    // Short internal delay for MIS menu expansion
                     await new Promise(r => setTimeout(r, 1000));
                     findAndClick(document, 'Reports');
                 });
 
-                // Wait for the Reports form frame to load
                 await new Promise(r => setTimeout(r, 6000));
 
-                // 6. SELECT KEYWORD
                 await popup.evaluate((keyword) => {
                     const getUI = (doc) => {
                         const selects = doc.querySelectorAll('select');
@@ -201,7 +186,6 @@ async function scrapeDhiraagu() {
                     }
                 }, kw.name);
 
-                // 7. DOWNLOAD SEQUENCE
                 await new Promise(r => setTimeout(r, 12000));
                 await popup.evaluate(() => {
                     const clickBtn = (doc, text) => {
@@ -228,7 +212,6 @@ async function scrapeDhiraagu() {
                     clickFinal(document);
                 });
 
-                // 8. FILE PROCESSING
                 const zipName = await waitForFile(downloadPath, '.zip');
                 const zipPath = path.join(downloadPath, zipName);
                 const zip = new AdmZip(zipPath);
@@ -246,7 +229,6 @@ async function scrapeDhiraagu() {
             } catch (err) {
                 console.log(`Dhiraagu: Error on ${kw.name}: ${err.message}`);
             } finally {
-                // Close context to free memory and reset session completely
                 await context.close();
             }
         }
@@ -255,9 +237,7 @@ async function scrapeDhiraagu() {
         await browser.close();
     }
 }
-/**
- * UTILITIES
- */
+
 async function waitForFile(dir, ext) {
     return new Promise((resolve, reject) => {
         let sec = 0;
@@ -280,7 +260,7 @@ async function processOoredooCSV(filePath, keywordId) {
                 for (const row of results) {
                     const time = row['Date Time'];
                     const phone = row['Msisdn'];
-                    const msg = row['Response'] || ""; // Capture message content
+                    const msg = row['Response'] || ""; 
 
                     if (time && phone) {
                         try {

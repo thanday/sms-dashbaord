@@ -5,7 +5,7 @@ const { Pool } = require("pg");
 const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
-const session = require("express-session"); // Added
+const session = require("express-session"); 
 const path = require("path");
 const axios = require("axios");
 const app = express();
@@ -16,21 +16,19 @@ const { exec } = require("child_process");
 
 // --- MIDDLEWARE ---
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Added for login form
+app.use(express.urlencoded({ extended: true })); 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 
-// --- SESSION CONFIGURATION ---
 app.use(
   session({
     secret: "sstv-internal-secret-2026",
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
+    cookie: { maxAge: 24 * 60 * 60 * 1000 }, 
   })
 );
 
-// --- AUTH MIDDLEWARE ---
 const isAdmin = (req, res, next) => {
   if (
     req.session.role === "admin" ||
@@ -39,7 +37,6 @@ const isAdmin = (req, res, next) => {
   ) {
     return next();
   }
-  // Store the original URL they wanted to visit
   req.session.returnTo = req.originalUrl;
   res.redirect("/login");
 };
@@ -51,15 +48,13 @@ app.post("/login", (req, res) => {
     req.session.authenticated = true;
     req.session.role = "admin";
 
-    // Check if there is a saved URL, otherwise go to /admin
     const redirectUrl = req.session.returnTo || "/admin";
-    delete req.session.returnTo; // Clear it after use
+    delete req.session.returnTo; 
     res.redirect(redirectUrl);
   } else if (username === "marketing" && password === "marketing@2026") {
     req.session.authenticated = true;
     req.session.role = "marketing";
 
-    // Check if there is a saved URL, otherwise go to /hadhiyaa-badhiyaa
     const redirectUrl = req.session.returnTo || "/hadhiyaa-badhiyaa";
     delete req.session.returnTo;
     res.redirect(redirectUrl);
@@ -85,7 +80,7 @@ app.post("/login", (req, res) => {
   //  });
 
 // --- PAGE ROUTES ---
-// Dashboard is now Home
+// Dashboard 
 app.get("/", (req, res) => res.render("dashboard"));
 app.get("/dashboard/all", (req, res) => res.render("dashboard"));
 
@@ -109,7 +104,6 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  // Set your admin credentials here
   if (username === "admin" && password === "sstv@2026") {
     req.session.authenticated = true;
     res.redirect("/admin");
@@ -193,7 +187,6 @@ app.post("/api/gifts", isAdmin, async (req, res) => {
   }
 });
 
-// 1. Get Category Counts for Hadhiyaa Badhiyaa
 app.get("/api/hb/stats", isAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -231,7 +224,6 @@ app.get("/api/hb/chart-data", isAdmin, async (req, res) => {
   }
 });
 
-// 2. Export Numbers for a Specific Category (Includes Duplicates)
 app.get("/api/hb/export/:category", isAdmin, async (req, res) => {
   const { category } = req.params;
   let filter = "";
@@ -308,7 +300,6 @@ app.get("/api/hb/operator-totals", isAdmin, async (req, res) => {
   }
 });
 
-// API: Set or Update the correct answer key for a specific Day
 app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
   const { day, answer } = req.body;
   try {
@@ -322,7 +313,6 @@ app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
   }
 });
 
-// API: Leaderboard - Calculates who has the most correct answers across 30 days
 const KR_QUERY = `
     WITH ParticipantScores AS (
         SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as hits
@@ -380,8 +370,6 @@ app.get("/api/kr/daily-details", isAdmin, async (req, res) => {
   }
 });
 
-// Qibla Quiz Leaderboard (Top 10 display)
-// This works on both Mac and Ubuntu regardless of the ID number
 const QIBLA_QUERY = `
     WITH ParticipantScores AS (
         SELECT msisdn, COUNT(DISTINCT ((DATE_TRUNC('day', received_at)::date - '2026-02-18'::date) + 1)) as hits
@@ -458,7 +446,6 @@ app.get("/api/mq/leaderboard", isAdmin, async (req, res) => {
   }
 });
 
-// API 2: Full Winner List for Export (All tied for 1st place)
 app.get("/api/mq/export-winners", isAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -481,7 +468,6 @@ app.get("/api/mq/export-winners", isAdmin, async (req, res) => {
   }
 });
 
-// API: MQ Daily Details
 app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -502,7 +488,6 @@ app.get("/api/mq/daily-details", isAdmin, async (req, res) => {
   }
 });
 
-// API: Get List
 app.get("/api/gifts", isAdmin, async (req, res) => {
   const result = await pool.query(
     "SELECT * FROM hadhiyaa_badhiyaa_gifts ORDER BY created_at DESC"
@@ -514,7 +499,6 @@ app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
   const { day, date, programId } = req.body;
 
   try {
-    // 1. Fetch Winners and Active Times from DB
     const result = await pool.query(
       `
       SELECT w.keyword, k.active_time, w.msisdn
@@ -535,7 +519,6 @@ app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
       return res.status(404).json({ error: "No winners found to broadcast." });
     }
 
-    // 2. Format the Telegram Message
     const d = new Date(date);
     const formattedDate = `${String(d.getDate()).padStart(2, "0")}/${String(
       d.getMonth() + 1
@@ -547,7 +530,6 @@ app.post("/api/broadcast-winners", isAdmin, async (req, res) => {
       message += `🔹 *${row.keyword}* (${row.active_time}) - \`${row.msisdn}\`\n`;
     });
 
-    // 3. Send to the Group Chat
     const botToken = "8609195590:AAGqf9Qauwz54TMFOKKeU1ZV3upqzfGj4wk";
     const chatId = "-5284447996";
 
@@ -667,7 +649,6 @@ app.get("/api/draw-numbers/:programId", isAdmin, async (req, res) => {
   }
 });
 
-// Route to export winners as CSV
 app.get("/api/export-daily-winners", async (req, res) => {
   const { day } = req.query;
 
@@ -717,14 +698,12 @@ app.get("/api/export-daily-winners", async (req, res) => {
   }
 });
 
-// Get Day Number Helper
 const getDayNumber = (dateStr) => {
   const start = new Date("2026-02-18");
   const current = new Date(dateStr);
   return Math.floor((current - start) / (1000 * 60 * 60 * 24)) + 1;
 };
 
-// API to save a winner
 app.post("/api/save-winner", isAdmin, async (req, res) => {
   const { msisdn, keyword, programId, date } = req.body;
   const dayNum = getDayNumber(date);
@@ -739,7 +718,6 @@ app.post("/api/save-winner", isAdmin, async (req, res) => {
   }
 });
 
-// View for Winners Gallery
 app.get("/dashboard/winners", async (req, res) => {
   const result = await pool.query(`
       SELECT w.*, p.name as program_name 
@@ -889,14 +867,12 @@ app.get("/api/download-inaameh-zip", async (req, res) => {
             .toUpperCase();
           const cleanKw = kw.name.toUpperCase().trim();
 
-          // Check for "AA", "AA SSTV", or just "SSTV" (covers lowercase/uppercase)
           const matchesKeyword = msg === cleanKw;
           const matchesKeywordWithSSTV =
             msg.startsWith(`${cleanKw} SSTV`) ||
             msg.startsWith(`${cleanKw}SSTV`);
           const isSSTV = msg === "SSTV";
 
-          // Return true if any of these match
           return matchesKeyword || matchesKeywordWithSSTV || isSSTV;
         })
         .map((row) => row.msisdn);

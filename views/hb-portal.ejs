@@ -116,7 +116,6 @@
     <script>
         async function loadHBPortal() {
             try {
-                // Fetch Main Summary
                 const statsRes = await fetch('/api/hb/stats');
                 const stats = await statsRes.json();
                 document.getElementById('count-essenza').innerText = stats.essenza_count.toLocaleString();
@@ -124,19 +123,16 @@
                 document.getElementById('count-bk').innerText = stats.bk_count.toLocaleString();
                 document.getElementById('syncTime').innerText = new Date().toLocaleTimeString();
 
-                // Fetch Operator Totals & Update Progress Bars
                 const totalsRes = await fetch('/api/hb/operator-totals');
                 const totals = await totalsRes.json();
                 updateTotals('ess', totals.essenza_dhiraagu, totals.essenza_ooredoo);
                 updateTotals('skip', totals.skip_dhiraagu, totals.skip_ooredoo);
                 updateTotals('bk', totals.bk_dhiraagu, totals.bk_ooredoo);
 
-                // Fetch Daily Line Trend
                 const trendRes = await fetch('/api/hb/chart-data');
                 const trendData = await trendRes.json();
                 renderTrendChart(trendData);
 
-                // Fetch Operator Breakdown Bars
                 const opRes = await fetch('/api/hb/operator-breakdown');
                 const opData = await opRes.json();
                 renderOpChart('chartEssenzaOp', opData, 'essenza_dhiraagu', 'essenza_ooredoo');
