@@ -5,7 +5,7 @@ const { Pool } = require("pg");
 const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
-const session = require("express-session"); 
+const session = require("express-session");
 const path = require("path");
 const axios = require("axios");
 const app = express();
@@ -16,7 +16,7 @@ const { exec } = require("child_process");
 
 // --- MIDDLEWARE ---
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 
@@ -25,7 +25,7 @@ app.use(
     secret: "sstv-internal-secret-2026",
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }, 
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -49,7 +49,7 @@ app.post("/login", (req, res) => {
     req.session.role = "admin";
 
     const redirectUrl = req.session.returnTo || "/admin";
-    delete req.session.returnTo; 
+    delete req.session.returnTo;
     res.redirect(redirectUrl);
   } else if (username === "marketing" && password === "marketing@2026") {
     req.session.authenticated = true;
@@ -63,24 +63,24 @@ app.post("/login", (req, res) => {
   }
 });
 
-  const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    database: "sms_stats",
-    password: "Sun.Media@94.6",
-    port: 5432,
-  });
+ const pool = new Pool({
+   user: "postgres",
+   host: "localhost",
+   database: "sms_stats",
+   password: "Sun.Media@94.6",
+   port: 5432,
+ });
 
-  //   const pool = new Pool({
-  //    user: "azman",
-  //    host: "localhost",
-  //    database: "sms_stats",
-  //    password: "",
-  //    port: 5432,
-  //  });
+// const pool = new Pool({
+//   user: "azman",
+//   host: "localhost",
+//   database: "sms_stats",
+//   password: "",
+//   port: 5432,
+// });
 
 // --- PAGE ROUTES ---
-// Dashboard 
+// Dashboard
 app.get("/", (req, res) => res.render("dashboard"));
 app.get("/dashboard/all", (req, res) => res.render("dashboard"));
 
@@ -187,118 +187,167 @@ app.post("/api/gifts", isAdmin, async (req, res) => {
   }
 });
 
+// Centralized configuration
+const HB_START_DATE = '2026-02-17 00:00:00';
+
+/** 1. Main Stats (Top Dashboard Cards) **/
 app.get("/api/hb/stats", isAdmin, async (req, res) => {
-  try {
-    const result = await pool.query(`
-          SELECT 
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%') as essenza_count,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%') as skip_count,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%') as bk_count
-          FROM sms_logs
-          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
-          AND received_at >= '2026-02-18 00:00:00';
-      `);
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%')) as essenza_count,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%')) as skip_count,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%')) as bk_count,
+                COUNT(*) FILTER (
+                    WHERE message_content NOT ILIKE '%ESSENZA%' 
+                    AND message_content NOT ILIKE '%ESSENSA%'
+                    AND message_content NOT ILIKE '%SKIP%' 
+                    AND message_content NOT ILIKE '%SMILE%'
+                    AND message_content NOT ILIKE '%BK%'
+                    AND message_content NOT ILIKE '%BULHI%'
+                ) as live_show_participants
+            FROM sms_logs
+            WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB')
+            AND received_at >= $1;
+        `, [HB_START_DATE]);
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get("/api/hb/chart-data", isAdmin, async (req, res) => {
-  try {
-      const result = await pool.query(`
-          SELECT 
-              (DATE_TRUNC('day', received_at)::date) as date,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%') as essenza,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%') as skip,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%') as bk
-          FROM sms_logs
-          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
-          AND received_at >= '2026-02-18 00:00:00'
-          GROUP BY date
-          ORDER BY date ASC;
-      `);
-      res.json(result.rows);
-  } catch (err) {
-      res.status(500).json({ error: err.message });
-  }
+/** 2. Operator Totals (Detailed Breakdown Table) **/
+app.get("/api/hb/operator-totals", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                -- ESSENZA
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%') AND operator = 'Dhiraagu') as essenza_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%') AND operator = 'Ooredoo') as essenza_ooredoo,
+                
+                -- SKIP
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%') AND operator = 'Dhiraagu') as skip_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%') AND operator = 'Ooredoo') as skip_ooredoo,
+                
+                -- BK
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%') AND operator = 'Dhiraagu') as bk_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%') AND operator = 'Ooredoo') as bk_ooredoo,
+
+                -- LIVE SHOW (Participants not choosing a gift)
+                COUNT(*) FILTER (
+                    WHERE message_content NOT ILIKE '%ESSENZA%' 
+                    AND message_content NOT ILIKE '%SKIP%' 
+                    AND message_content NOT ILIKE '%SMILE%'
+                    AND message_content NOT ILIKE '%BK%'
+                    AND operator = 'Dhiraagu'
+                ) as live_dhiraagu,
+                COUNT(*) FILTER (
+                    WHERE message_content NOT ILIKE '%ESSENZA%' 
+                    AND message_content NOT ILIKE '%SKIP%' 
+                    AND message_content NOT ILIKE '%SMILE%'
+                    AND message_content NOT ILIKE '%BK%'
+                    AND operator = 'Ooredoo'
+                ) as live_ooredoo
+            FROM sms_logs
+            WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB')
+            AND received_at >= $1;
+        `, [HB_START_DATE]);
+        res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/** 3. Operator Breakdown (Daily Bar Charts) **/
+app.get("/api/hb/operator-breakdown", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                (DATE_TRUNC('day', received_at)::date) as date,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%') AND operator = 'Dhiraagu') as essenza_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%') AND operator = 'Ooredoo') as essenza_ooredoo,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%') AND operator = 'Dhiraagu') as skip_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%') AND operator = 'Ooredoo') as skip_ooredoo,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%') AND operator = 'Dhiraagu') as bk_dhiraagu,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%') AND operator = 'Ooredoo') as bk_ooredoo
+            FROM sms_logs
+            WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB')
+            AND received_at >= $1
+            GROUP BY date
+            ORDER BY date DESC;
+        `, [HB_START_DATE]);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+/** 4. Chart Data (Main Trend Line Chart) **/
+app.get("/api/hb/chart-data", isAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                (DATE_TRUNC('day', received_at)::date) as date,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%')) as essenza,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%')) as skip,
+                COUNT(*) FILTER (WHERE (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%')) as bk,
+                COUNT(*) as total
+            FROM sms_logs
+            WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB')
+            AND received_at >= $1
+            GROUP BY date
+            ORDER BY date ASC;
+        `, [HB_START_DATE]);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 
 app.get("/api/hb/export/:category", isAdmin, async (req, res) => {
   const { category } = req.params;
-  let filter = "";
-
-  if (category === "essenza") filter = "ESSENZA";
-  else if (category === "skip") filter = "Skip n Smile";
-  else if (category === "bk") filter = "BK";
-
+  
   try {
-    const result = await pool.query(
-      `
-          SELECT msisdn 
-          FROM sms_logs 
-          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
-          AND message_content ILIKE '%' || $1 || '%'
-          AND received_at >= '2026-02-18 00:00:00'
-          ORDER BY received_at ASC;
-      `,
-      [filter]
-    );
+      let queryText = "";
+      
+      // Removed DISTINCT to include all entries for "more chances"
+      if (category === "essenza") {
+          queryText = `SELECT msisdn FROM sms_logs 
+                       WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB') 
+                       AND (message_content ILIKE '%ESSENZA%' OR message_content ILIKE '%ESSENSA%')
+                       AND received_at >= $1`;
+      } 
+      else if (category === "skip") {
+          queryText = `SELECT msisdn FROM sms_logs 
+                       WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB') 
+                       AND (message_content ILIKE '%SKIP%' OR message_content ILIKE '%SMILE%' OR message_content ILIKE '%BICYCLE%')
+                       AND received_at >= $1`;
+      } 
+      else if (category === "bk") {
+          queryText = `SELECT msisdn FROM sms_logs 
+                       WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB') 
+                       AND (message_content ILIKE '%BK%' OR message_content ILIKE '%BULHI%')
+                       AND received_at >= $1`;
+      } 
+      else if (category === "live") {
+          queryText = `SELECT msisdn FROM sms_logs 
+                       WHERE keyword_id IN (SELECT id FROM keywords WHERE name = 'HB') 
+                       AND message_content NOT ILIKE '%ESSENZA%' 
+                       AND message_content NOT ILIKE '%SKIP%' 
+                       AND message_content NOT ILIKE '%SMILE%'
+                       AND message_content NOT ILIKE '%BK%'
+                       AND received_at >= $1`;
+      }
 
-    res.json(result.rows);
+      const result = await pool.query(queryText, [HB_START_DATE]);
+      
+      // Join all numbers (including duplicates) by new lines
+      const textContent = result.rows.map(row => row.msisdn).join("\n");
+
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=hb_${category}_pool_full.txt`);
+      
+      res.send(textContent);
+      
   } catch (err) {
-    res.status(500).json({ error: err.message });
+      console.error("Export Error:", err);
+      res.status(500).send("Error generating pool file");
   }
 });
 
-app.get("/api/hb/operator-breakdown", isAdmin, async (req, res) => {
-  try {
-      const result = await pool.query(`
-          SELECT 
-              (DATE_TRUNC('day', received_at)::date) as date,
-              -- ESSENZA
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as essenza_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as essenza_ooredoo,
-              -- SKIP N SMILE
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as skip_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as skip_ooredoo,
-              -- BK
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as bk_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as bk_ooredoo
-          FROM sms_logs
-          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
-          AND received_at >= '2026-02-18 00:00:00'
-          GROUP BY date
-          ORDER BY date DESC;
-      `);
-      res.json(result.rows);
-  } catch (err) {
-      res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/api/hb/operator-totals", isAdmin, async (req, res) => {
-  try {
-      const result = await pool.query(`
-          SELECT 
-              -- ESSENZA
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as essenza_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%ESSENZA%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as essenza_ooredoo,
-              -- SKIP N SMILE
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as skip_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%Skip n Smile%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as skip_ooredoo,
-              -- BK
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND (msisdn LIKE '7%' OR msisdn LIKE '91%' OR msisdn LIKE '94%')) as bk_dhiraagu,
-              COUNT(*) FILTER (WHERE message_content ILIKE '%BK%' AND msisdn LIKE '9%' AND msisdn NOT LIKE '91%' AND msisdn NOT LIKE '94%') as bk_ooredoo
-          FROM sms_logs
-          WHERE keyword_id = (SELECT id FROM keywords WHERE name = 'HB' LIMIT 1)
-          AND received_at >= '2026-02-18 00:00:00';
-      `);
-      res.json(result.rows[0]);
-  } catch (err) {
-      res.status(500).json({ error: err.message });
-  }
-});
 
 app.post("/api/mq/set-answer", isAdmin, async (req, res) => {
   const { day, answer } = req.body;

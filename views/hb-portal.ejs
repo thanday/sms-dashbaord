@@ -194,15 +194,24 @@
         }
 
         async function exportHB(cat) {
-            const res = await fetch(`/api/hb/export/${cat}`);
-            const data = await res.json();
-            const content = data.map(r => r.msisdn).join('\n');
-            const blob = new Blob([content], { type: 'text/plain' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `hb_${cat}_draw_pool.txt`;
-            a.click();
-        }
+    try {
+        const res = await fetch(`/api/hb/export/${cat}`);
+        
+        // CHANGE THIS LINE: from .json() to .text()
+        const content = await res.text(); 
+
+        // Now 'content' is already the string of numbers, no need to .map()
+        const blob = new Blob([content], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `hb_${cat}_draw_pool.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } catch (err) {
+        console.error("Export failed:", err);
+    }
+}
 
         loadHBPortal();
     </script>
